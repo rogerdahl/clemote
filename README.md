@@ -8,6 +8,8 @@ The app controls Clementine via DBUS. File and tag operations are performed dire
 
 **Warning: The RECORD button immediately deletes the currently playing file from disk.**
 
+The blue button adds ".delete" to the filename of the currently playing file but does not delete the file.
+
 ### Usage
 
 * Find your remote control device with:
@@ -26,6 +28,12 @@ If there's interest, I'll provide instructions for how to run the app as a servi
 * Allow the app to trigger refresh in Clementine to show changes:
 
     `Clementine > Preferences > Music Library > Monitor library for changes > Enable`
+
+### Troubleshooting
+
+* This app does not need LIRC, and LIRC may interfere if installed. Try:
+
+    `$ apt remove lirc`
 
 ### Build on Linux
 
