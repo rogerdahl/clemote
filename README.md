@@ -37,8 +37,8 @@ If there's interest, I'll provide instructions for how to run the app as a servi
 
 ### Technologies
 
-    * sdbus-cpp - High level D-Bus C++ bindings
-    * taglib - Solid, battle tested, audio metadata library
+* sdbus-cpp - High level D-Bus C++ bindings
+* taglib - Solid, battle tested, audio metadata library
 
 ### Build on Linux
 
