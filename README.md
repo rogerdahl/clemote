@@ -4,7 +4,7 @@
 
 This app reads button presses from a remote control, sends commands to the Clementine Player, deletes and renames files, and updates song ratings.
 
-The app controls Clementine via DBUS. File and tag operations are performed directly, after which the Clementine library is synchronized in order to make the changes visible.
+The app controls Clementine via D-Bus. File and tag operations are performed directly, after which the Clementine library is synchronized in order to make the changes visible.
 
 **Warning: The RECORD button immediately deletes the currently playing file from disk.**
 
@@ -34,6 +34,11 @@ If there's interest, I'll provide instructions for how to run the app as a servi
 * This app does not need LIRC, and LIRC may interfere if installed. Try:
 
     `$ apt remove lirc`
+
+### Technologies
+
+    * sdbus-cpp - High level D-Bus C++ bindings
+    * taglib - Solid, battle tested, audio metadata library
 
 ### Build on Linux
 
