@@ -12,21 +12,37 @@ using namespace std;
 using namespace boost::filesystem;
 using namespace boost::algorithm;
 
-const char* CLEMENTINE_SERVICE_NAME = "org.mpris.clementine";
-const char* PLAYER_OBJECT_PATH = "/Player";
-const char* TRACK_LIST_OBJECT_PATH = "/TrackList";
-const char* MEDIA_PLAYER_INTERFACE_NAME = "org.freedesktop.MediaPlayer";
+// Ubuntu 16.04
 
-// $ qdbus org.mpris.clementine /Player
-// org.freedesktop.MediaPlayer.GetMetadata
-// $ qdbus org.mpris.clementine /Player org.freedesktop.MediaPlayer.Pause
-// $ qdbus org.mpris.clementine /Player org.freedesktop.MediaPlayer.VolumeSet 50
+// const char* CLEMENTINE_SERVICE_NAME = "org.mpris.clementine";
+// const char* PLAYER_OBJECT_PATH = "/Player";
+// const char* TRACK_LIST_OBJECT_PATH = "/TrackList";
+// const char* MEDIA_PLAYER_INTERFACE_NAME = "org.freedesktop.MediaPlayer";
+
+// Ubuntu 18.04
+
+const char* CLEMENTINE_SERVICE_NAME = "org.mpris.MediaPlayer2.clementine";
+const char* PLAYER_OBJECT_PATH = "/org/mpris/MediaPlayer2";
+const char* MEDIA_PLAYER_INTERFACE_NAME = "org.mpris.MediaPlayer2.Player";
+const char* TRACK_LIST_INTERFACE_NAME = "org.mpris.MediaPlayer2.TrackList";
 
 ClementineDbus::ClementineDbus()
 {
   connection = sdbus::createSessionBusConnection();
   createPlayerProxy();
-  createTrackListProxy();
+
+  //  playerProxy->uponSignal("Seeked").onInterface(
+  //    MEDIA_PLAYER_INTERFACE_NAME
+  //  ).call([](const int64_t v){ onS(v); });
+
+  //    registerSeekedHandler();
+  //    playerProxy->finishRegistration();
+
+  // After calling enterProcessingLoopAsync(), I get random crashes, even
+  // without having registered any handlers.
+
+  // Start separate thread that listens for signals and calls handlers.
+  //   connection->enterProcessingLoopAsync();
 }
 
 ClementineDbus::~ClementineDbus() = default;
@@ -35,12 +51,6 @@ void ClementineDbus::createPlayerProxy()
 {
   playerProxy = sdbus::createObjectProxy(
     *connection, CLEMENTINE_SERVICE_NAME, PLAYER_OBJECT_PATH);
-}
-
-void ClementineDbus::createTrackListProxy()
-{
-  trackListProxy = sdbus::createObjectProxy(
-    *connection, CLEMENTINE_SERVICE_NAME, TRACK_LIST_OBJECT_PATH);
 }
 
 void ClementineDbus::playerPlay()
@@ -64,222 +74,142 @@ void ClementineDbus::playerPause()
 void ClementineDbus::playerPrev()
 {
   fmt::print("Prev\n");
-  playerProxy->callMethod("Prev").onInterface(MEDIA_PLAYER_INTERFACE_NAME);
+  playerProxy->callMethod("Previous").onInterface(MEDIA_PLAYER_INTERFACE_NAME);
 }
 
 void ClementineDbus::playerNext()
 {
   fmt::print("Next\n");
+
+  auto m = getMetadataMap();
+
+  for (auto& v : m) {
+    fmt::print("{} - {}\n", v.first, v.second.peekValueType());
+    if (v.second.peekValueType() == "i") {
+      fmt::print("{} - {}\n", v.first, v.second.get<int>());
+    }
+    else if (v.second.peekValueType() == "s") {
+      fmt::print("{} - {}\n", v.first, v.second.get<string>());
+    }
+  }
+
   playerProxy->callMethod("Next").onInterface(MEDIA_PLAYER_INTERFACE_NAME);
 }
 
 void ClementineDbus::playerMute()
 {
   fmt::print("Mute\n");
-  playerProxy->callMethod("Mute").onInterface(MEDIA_PLAYER_INTERFACE_NAME);
+  setVolume(0.0);
 }
 
-int ClementineDbus::getPlayerPosition()
+void ClementineDbus::volumeUp()
 {
-  int pos;
-  playerProxy->callMethod("PositionGet")
-    .onInterface(MEDIA_PLAYER_INTERFACE_NAME)
-    .storeResultsTo(pos);
-  return pos;
+  fmt::print("Clem vol up\n");
+  setVolume(getVolume() + 0.05);
 }
 
-void ClementineDbus::setPlayerPosition(int pos)
+void ClementineDbus::volumeDown()
 {
-  playerProxy->callMethod("PositionSet")
+  fmt::print("Clem vol down\n");
+  setVolume(getVolume() - 0.05);
+}
+
+double ClementineDbus::getVolume()
+{
+  return static_cast<double>(playerProxy->getProperty("Volume").onInterface(
+    MEDIA_PLAYER_INTERFACE_NAME));
+}
+
+void ClementineDbus::setVolume(double vol)
+{
+  playerProxy->setProperty("Volume")
     .onInterface(MEDIA_PLAYER_INTERFACE_NAME)
-    .withArguments(pos);
+    .toValue(vol);
+}
+
+s64 ClementineDbus::getPlayerPosition()
+{
+  return static_cast<s64>(playerProxy->getProperty("Position")
+                            .onInterface(MEDIA_PLAYER_INTERFACE_NAME))
+         / 1000;
+}
+
+void ClementineDbus::setPlayerPosition(string trackId, s64 pos)
+{
+  playerProxy->callMethod("SetPosition")
+    .onInterface(MEDIA_PLAYER_INTERFACE_NAME)
+    .withArguments(sdbus::ObjectPath(trackId.c_str()), pos * 1000);
 }
 
 string ClementineDbus::getPlayerCurrentPath()
 {
-  string path;
-
-  sd_bus_error error = SD_BUS_ERROR_NULL;
-  sd_bus_message* reply = nullptr;
-  sd_bus* bus = nullptr;
-
-  // Connect to the Session bus (not System bus)
-  checkSdbusCall(sd_bus_open_user(&bus));
-
-  checkSdbusCall(
-    sd_bus_call_method(
-      bus,
-      "org.mpris.clementine", // service to contact
-      "/Player", // object path
-      "org.freedesktop.MediaPlayer", // interface name
-      "GetMetadata", // method name
-      &error, // object to return error in
-      &reply, // return message on success
-      "" // input signature
-      // second argument
-      ));
-
-  // Parse the response message
-  checkSdbusCall(
-    sd_bus_message_enter_container(reply, SD_BUS_TYPE_ARRAY, "{sv}"));
-
-  while (sd_bus_message_enter_container(reply, SD_BUS_TYPE_DICT_ENTRY, "sv")
-         > 0) {
-    const char* key;
-    const char* value;
-    char type;
-
-    checkSdbusCall(sd_bus_message_read_basic(reply, SD_BUS_TYPE_STRING, &key));
-    checkSdbusCall(sd_bus_message_peek_type(reply, &type, &value));
-
-    if (type == SD_BUS_TYPE_VARIANT) {
-      checkSdbusCall(
-        sd_bus_message_enter_container(reply, SD_BUS_TYPE_VARIANT, value));
-      checkSdbusCall(sd_bus_message_peek_type(reply, &type, &value));
-      if (type == SD_BUS_TYPE_STRING) {
-        checkSdbusCall(sd_bus_message_read_basic(reply, type, &value));
-        // std::cout << key << ": " << value << std::endl;
-        if (string(key) == "location") {
-          path = value;
-        }
-      }
-      else {
-        sd_bus_message_skip(reply, nullptr);
-      }
-      checkSdbusCall(sd_bus_message_exit_container(reply));
-    }
-    checkSdbusCall(sd_bus_message_exit_container(reply));
-  }
-
-  sd_bus_error_free(&error);
-  sd_bus_message_unref(reply);
-  sd_bus_unref(bus);
-
-  replace_all(path, "file://", "");
-
+  MetadataMap metadataMap = getMetadataMap();
+  auto path = metadataMap["xesam:url"].get<string>();
+  replace_first(path, "file://", "");
   return path;
 }
 
-void ClementineDbus::getPlayerMetadata()
+MetadataMap ClementineDbus::getMetadataMap() const
 {
-  fmt::print("0\n");
-
-  std::map<std::string, sdbus::Variant> r;
-  playerProxy->callMethod("GetMetadata")
-    .onInterface(MEDIA_PLAYER_INTERFACE_NAME)
-    .storeResultsTo(r);
-
-  fmt::print("1\n");
+  MetadataMap metadataMap = playerProxy->getProperty("Metadata")
+                              .onInterface(MEDIA_PLAYER_INTERFACE_NAME);
+  return metadataMap;
 }
 
-int ClementineDbus::getTrackListCurrentTrack()
+string ClementineDbus::getCurrentTrackId()
 {
-  int trackIdx;
-  trackListProxy->callMethod("GetCurrentTrack")
-    .onInterface(MEDIA_PLAYER_INTERFACE_NAME)
-    .storeResultsTo(trackIdx);
-  return trackIdx;
+  MetadataMap metadataMap = getMetadataMap();
+  return metadataMap["mpris:trackid"].get<string>();
 }
 
-void ClementineDbus::removeTrackListCurrentTrack()
+void ClementineDbus::removeCurrentTrackFromPlaylist()
 {
-  auto trackIdx = getTrackListCurrentTrack();
-  removeTrackListTrack(trackIdx);
+  auto trackId = getCurrentTrackId();
+  removeTrackFromPlaylist(trackId);
 }
 
-void ClementineDbus::removeTrackListTrack(int trackIdx)
+void ClementineDbus::removeTrackFromPlaylist(string trackId)
 {
-  trackListProxy->callMethod("DelTrack")
-    .onInterface(MEDIA_PLAYER_INTERFACE_NAME)
-    .withArguments(trackIdx);
+  fmt::print("Removing from playlist: {}\n", trackId);
+  playerProxy->callMethod("RemoveTrack")
+    .onInterface(TRACK_LIST_INTERFACE_NAME)
+    .withArguments(sdbus::ObjectPath(trackId.c_str()));
 }
 
-void ClementineDbus::checkSdbusCall(int r)
-{
-  if (r < 0) {
-    fprintf(stderr, "SD_BUS call failed: %s\n", strerror(-r));
-    exit(r);
-  }
-}
-
-void KonsoleTabName()
-{
-  //
-  ////  const char* clementineServiceName = "org.kde.konsole";
-  ////  const char* playerObjectPath = "/Sessions/1";
-  ////  auto playerProxy = sdbus::createObjectProxy(*c.release(),
-  /// clementineServiceName, playerObjectPath);
-  ////
-  ////  const char* mediaPlayerInterfaceName = "org.kde.konsole.Session";
-  ////
-  ////  playerProxy->callMethod("setHistorySize")
-  ////    .onInterface(mediaPlayerInterfaceName).withArguments(1000);
-}
-
-void experiments1()
-{
-  //
-  ////  const char* clementineServiceName = "org.mpris.MediaPlayer2.clementine";
-  ////  const char* playerObjectPath = "/org/mpris/MediaPlayer2";
-  ////  auto playerProxy = sdbus::createObjectProxy(clementineServiceName,
-  /// playerObjectPath);
-  ////
-  ////  auto i = playerProxy.get();
-  ////  i->callMethod(
-  ////      "Pause"
-  ////  ).onInterface("org.freedesktop.MediaPlayer");
-  ////
-  ////  return 0;
-  ////
-  ////
-  ////  playerProxy->callMethod(
-  ////    "Pause"
-  ////  ).onInterface(mediaPlayerInterfaceName);
-  ////  .withArguments().onInterface(mediaPlayerInterfaceName);
-  //
-  ////  std::string concatenatedString;
-  ////  playerProxy->callMethod("org.freedesktop.MediaPlayer.Pause")
-  ////      .onInterface(mediaPlayerInterfaceName).withArguments()
-  ////      .storeResultsTo(concatenatedString);
-  //
-  ////    assert(concatenatedString == "1:2:3");
-  //
-  //
-  ////      .withArguments(numbers,
-  /// separator).storeResultsTo(concatenatedString);
-  //
-  ////  );
-  //
-  ////
-  /// playerProxy->uponSignal("concatenated").onInterface(mediaPlayerInterfaceName).call(
-  ////      [this](const std::string& str){ onConcatenated(str); }
-  ////  );
-  ////  playerProxy->finishRegistration();
-  ////
-  ////  std::vector<int> numbers = {1, 2, 3};
-  ////  std::string separator = ":";
-  ////
-  ////  // Invoke concatenate on given interface of the object
-  ////  {
-  ////    std::string concatenatedString;
-  ////
-  /// playerProxy->callMethod("concatenate").onInterface(mediaPlayerInterfaceName).withArguments(numbers,
-  /// separator).storeResultsTo(concatenatedString);
-  ////    assert(concatenatedString == "1:2:3");
-  ////  }
-}
-
-void SystemVolumeUp()
-{
-  //  const char* CLEMENTINE_SERVICE_NAME = "com.ubuntu.SystemService";
-  ////  const char* playerObjectPath = "/";
-  ////  auto playerProxy = sdbus::createObjectProxy(*c.release(),
-  /// clementineServiceName, playerObjectPath);
-  ////
-  ////  const char* mediaPlayerInterfaceName = "com.ubuntu.SystemService";
-  ////
-  ////  playerProxy->callMethod("is_reboot_required")
-  ////      .onInterface(mediaPlayerInterfaceName);
-  ////
-  ////  return 0;
-}
+// void ClementineDbus::registerSeekedHandler()
+//{
+//  playerProxy->registerSignalHandler(
+//    MEDIA_PLAYER_INTERFACE_NAME, "Seeked", &onSeeked);
+//}
+//
+// void ClementineDbus::registerTrackMedatadataChangedHandler()
+//{
+//    trackListProxy->registerSignalHandler(
+//      TRACK_LIST_INTERFACE_NAME, "TrackMetadataChanged",
+//      &onTrackMetadataChanged);
+//}
+//
+// void onSeeked(sdbus::Signal& signal)
+// void onSeeked(const int64_t v)
+//{
+//  std::cout << "Signal: Seeked:" << std::endl;
+//  int64_t x;
+//  signal >> x;
+//  std::cout << v << std::endl;
+//}
+//
+// void onTrackMetadataChanged(sdbus::Signal& signal)
+//{
+//  std::cout << "Signal: TrackMetadataChanged:" << std::endl;
+//  //  signal.closeVariant();
+//  //  signal.clearFlags();
+//
+//  //  std::map<std::string, sdbus::Variant> metadataMap;
+//  //  auto path = metadataMap["xesam:url"].get<string>();
+//  //  replace_first(path, "file://", "");
+//  //  return path;
+//
+//  //  int64_t x;
+//  //  std::cout << signal.getMemberName() << std::endl; // >> metadataMap;
+//  //  std::cout << "Signal: TrackMetadataChanged: " << x << std::endl;
+//}

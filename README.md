@@ -14,7 +14,8 @@ The blue button adds ".delete" to the filename of the currently playing file but
 
 * Find your remote control device with:
 
-    `$ lsinput`
+    `$ sudo apt install input-utils`
+    `$ sudo lsinput`
 
 * Start the Clementine Player
 * Start the app with:
@@ -27,7 +28,8 @@ If there's interest, I'll provide instructions for how to run the app as a servi
 
 * Allow the app to trigger refresh in Clementine to show changes:
 
-    `Clementine > Preferences > Music Library > Monitor library for changes > Enable`
+    Clementine > Tools > Preferences > Music Library
+        > Monitor library for changes > Enable
 
 ### Troubleshooting
 
@@ -42,28 +44,33 @@ If there's interest, I'll provide instructions for how to run the app as a servi
 
 ### Build on Linux
 
-#### gcc
+Tested on Linux Mint 19.
 
-Need gcc >= 6 for sdbus-cpp
+Should work on Ubuntu 18.04 and other distributions based on it.
 
-Follow: https://solarianprogrammer.com/2016/10/07/building-gcc-ubuntu-linux/
+#### Packaged dependencies
+
+    $ sudo apt install build-essential cmake \
+    libboost-filesystem-dev libboost-system-dev \
+    libsystemd-dev libpulse-dev libevdev-dev
 
 #### sdbus-cpp
 
-Building with local gcc
-
-    # export CC=/usr/local/gcc-7.3/bin/gcc-7.3
-    # export CXX=/usr/local/gcc-7.3/bin/g++-7.3
-    # export LD_LIBRARY_PATH=/usr/local/gcc-7.3/lib64/
-    $ sudo apt install libsystemd-dev
-    $ export CPPFLAGS=-DDEBUG
-    $ export CXXFLAGS="-g -O0"
-    $ ./autogen.sh CC=/usr/local/gcc-7.3/bin/gcc-7.3 CXX=/usr/local/gcc-7.3/bin/g++-7.3 LD_LIBRARY_PATH=/usr/local/gcc-7.3/lib64/gcc/x86_64-linux-gnu/7.3.0/
-    --disable-tests
-    $ make -j
+    $ git clone https://github.com/Kistler-Group/sdbus-cpp.git
+    $ cd sdbus-cpp
+    $ ./autogen.sh --disable-tests
+    $ make -j$(nproc)
 
 #### taglib
 
-    $ cmake -DCMAKE_INSTALL_PREFIX=./mytaglib -DCMAKE_BUILD_TYPE=Release .
-    $ make
+    $ git clone https://github.com/taglib/taglib.git
+    $ cd taglib
+    $ cmake -DCMAKE_BUILD_TYPE=Release .
+    $ make -j$(nproc)
     $ sudo make install
+
+### Troubleshoot D-Bus issues
+
+    $ sudo apt install d-feet
+    $ d-feet
+

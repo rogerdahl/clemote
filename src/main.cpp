@@ -9,6 +9,7 @@
 
 #include "clementine_dbus.h"
 #include "tag.h"
+#include "pulse_audio.h"
 
 #include <sys/stat.h>
 
@@ -20,6 +21,7 @@ int remoteControl(const string& device);
 
 string eventCodeToString(int eventCode);
 void touchParentDir(const path& filePath);
+void touchCurrentParentDir(ClementineDbus& clem);
 void setRatingOnCurrent(ClementineDbus& clem, int ratingInt, bool skipToNext);
 void syncMyRatingToPopularityMeterRecursive(const path& rootDir);
 
@@ -64,6 +66,7 @@ int remoteControl(const string& device)
   }
 
   ClementineDbus clem;
+  PulseAudio pulseAudio;
 
   while (true) {
     struct input_event ev;
@@ -73,15 +76,15 @@ int remoteControl(const string& device)
       continue;
     }
 
-    fmt::print("code={}({}) value={}\n",
-               eventCodeToString(ev.code), ev.code, ev.value
-    );
+    //    fmt::print("code={}({}) value={}\n",
+    //               eventCodeToString(ev.code), ev.code, ev.value
+    //    );
 
     switch (ev.code) {
 
-    //
-    // Direct to player mappings
-    //
+      //
+      // Direct to player mappings
+      //
 
     case KEY_MUTE:
       clem.playerMute();
@@ -90,13 +93,14 @@ int remoteControl(const string& device)
       clem.playerPlay();
       break;
     case KEY_PAUSE:
+    case KEY_SUBTITLE:
       clem.playerPause();
       break;
     case KEY_STOP:
       clem.playerStop();
       break;
     case KEY_PREVIOUS:
-//    case KEY_SUBTITLE:
+    //    case KEY_SUBTITLE:
     case KEY_EXIT:
       clem.playerPrev();
       break;
@@ -106,9 +110,11 @@ int remoteControl(const string& device)
       break;
     case KEY_REWIND: {
       // skip back 30 sec
-      int pos = clem.getPlayerPosition();
-      int newPos = pos - 30 * 1000;
-      clem.setPlayerPosition(newPos);
+      auto pos = clem.getPlayerPosition();
+      string trackId = clem.getCurrentTrackId();
+      //      fmt::print("trackId: {}\n", trackId);
+      auto newPos = pos - 30 * 1000;
+      clem.setPlayerPosition(trackId, newPos);
       pos /= 1000;
       newPos /= 1000;
       fmt::print(
@@ -118,9 +124,11 @@ int remoteControl(const string& device)
     }
     case KEY_FASTFORWARD: {
       // skip forward 30 sec
-      int pos = clem.getPlayerPosition();
-      int newPos = pos + 30 * 1000;
-      clem.setPlayerPosition(newPos);
+      auto pos = clem.getPlayerPosition();
+      string trackId = clem.getCurrentTrackId();
+      fmt::print("trackId: {}\n", trackId);
+      auto newPos = pos + 30 * 1000;
+      clem.setPlayerPosition(trackId, newPos);
       pos /= 1000;
       newPos /= 1000;
       fmt::print(
@@ -128,9 +136,22 @@ int remoteControl(const string& device)
         newPos % 60);
       break;
     }
-    //
-    // Tag and keep playing, score 1 - 5
-    //
+
+    case KEY_DVD: {
+      string path = clem.getPlayerCurrentPath();
+      fmt::print("~~~~\n\nCurrently playing:\n{}\n\n", path);
+      dump(path);
+      break;
+    }
+
+    case KEY_PVR: {
+      clem.removeCurrentTrackFromPlaylist();
+      touchCurrentParentDir(clem);
+    }
+      //
+      // Tag and keep playing, score 1 - 5
+      //
+
     case KEY_NUMERIC_1:
       setRatingOnCurrent(clem, 1, false);
       break;
@@ -151,9 +172,10 @@ int remoteControl(const string& device)
       setRatingOnCurrent(clem, 5, false);
       break;
 
-    //
-    // Tag and skip to next, score 1 - 5
-    //
+      //
+      // Tag and skip to next, score 1 - 5
+      //
+
     case KEY_NUMERIC_3:
       setRatingOnCurrent(clem, 1, true);
       break;
@@ -174,38 +196,44 @@ int remoteControl(const string& device)
       setRatingOnCurrent(clem, 5, true);
       break;
 
-    // System volume
-    //    case KEY_CHANNELUP:
-    //      clem.getPlayerMetadata();
+      // System volume
 
-    case KEY_CHANNELDOWN: {
-      string p = clem.getPlayerCurrentPath();
-      fmt::print("\n~~\nCurrently playing: {}\n", p);
-      dump(p);
+    case KEY_VOLUMEUP: {
+      pulseAudio.volumeUp();
+      break;
+    }
+    case KEY_VOLUMEDOWN: {
+      pulseAudio.volumeDown();
       break;
     }
 
-    //    KEY_VOLUMEUP / KEY_CHANNELUP
-    //    KEY_VOLUMEDOWN / KEY_CHANNELDOWN
+      // Internal Clementine volume
 
-    //
-    // File operations
-    //
+    case KEY_CHANNELUP: {
+      clem.volumeUp();
+      break;
+    }
+    case KEY_CHANNELDOWN: {
+      clem.volumeDown();
+      break;
+    }
 
-    //    case KEY_RED:
+      //
+      // File operations
+      //
+
     case KEY_RECORD: {
       // Delete immediately, with extreme prejudice
       string path = clem.getPlayerCurrentPath();
       fmt::print("Deleting file:\n{}\n", path);
-      int trackIdx = clem.getTrackListCurrentTrack();
+      string trackId = clem.getCurrentTrackId();
       clem.playerNext();
       remove(path);
-      clem.removeTrackListTrack(trackIdx);
+      clem.removeTrackFromPlaylist(trackId);
       break;
     }
 
-    case KEY_BLUE:
-    case KEY_SLEEP: {
+    case KEY_BLUE: {
       // Tag for delete by renaming file
       string path = clem.getPlayerCurrentPath();
       auto newPath = path;
@@ -216,6 +244,7 @@ int remoteControl(const string& device)
       rename(path, newPath);
       break;
     }
+
     default:
       fmt::print(
         "Unhandled: code={}({}) value={}\n", eventCodeToString(ev.code),
@@ -233,7 +262,7 @@ int remoteControl(const string& device)
 void syncMyRatingToPopularityMeterRecursive(const path& rootDir)
 {
   for (recursive_directory_iterator iter(rootDir), end; iter != end; ++iter) {
-    syncMyRatingToPopularityMeter(iter->path().string().c_str());
+    syncMyRatingToPopularityMeter(iter->path().string());
   }
 }
 
@@ -242,12 +271,19 @@ void setRatingOnCurrent(ClementineDbus& clem, int ratingInt, bool skipToNext)
   auto filePath = clem.getPlayerCurrentPath();
   setMyRating(filePath, ratingInt);
   // Update rating display in Clementine by forcing a library refresh
-  // For this to work, Preferences > Music Library > Monitor library for changes
-  // must be enabled
+  // For this to work,
+  // Clementine > Tools > Preferences > Music Library > Monitor library for
+  // changes must be enabled
   touchParentDir(filePath);
   if (skipToNext) {
     clem.playerNext();
   }
+}
+
+void touchCurrentParentDir(ClementineDbus& clem)
+{
+  auto filePath = clem.getPlayerCurrentPath();
+  touchParentDir(filePath);
 }
 
 void touchParentDir(const path& filePath)
