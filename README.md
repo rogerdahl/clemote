@@ -16,7 +16,9 @@ The blue button adds ".delete" to the filename of the currently playing file but
 * Start the Clementine Player
 * Start this app with:
 
-    $ clemote remote </dev/input/eventX>
+```
+$ clemote remote </dev/input/eventX>
+```
 
 Where `/dev/input/eventX` is the receiver for your remote control.
 
@@ -27,19 +29,23 @@ If you need instructions for how to run the app automatically as a service, feel
 
 ### Finding your remote control receiver device
 
-    $ sudo apt install input-utils
-    $ sudo lsinput
+```
+$ sudo apt install input-utils
+$ sudo lsinput
+```
 
 Look for a device such as
 
-    /dev/input/event15
-       bustype : BUS_USB
-       vendor  : 0x1019
-       product : 0xf38
-       version : 0
-       name    : "Media Center Ed. eHome Infrared "
-       phys    : "usb-0000:29:00.3-3"
-       bits ev : (null) (null) (null) (null)
+```
+/dev/input/event15
+   bustype : BUS_USB
+   vendor  : 0x1019
+   product : 0xf38
+   version : 0
+   name    : "Media Center Ed. eHome Infrared "
+   phys    : "usb-0000:29:00.3-3"
+   bits ev : (null) (null) (null) (null)
+```
 
 You now have the device (`/dev/input/event15` in this case).
 
@@ -48,11 +54,15 @@ You now have the device (`/dev/input/event15` in this case).
 
 The device number may change when you plug or unplug devices, or reboot the computer. It may also be usable only by root. To fix these issues, add a udev file:
 
-    $ sudo editor /etc/udev/rules.d/10-clemote.rules
+```
+$ sudo editor /etc/udev/rules.d/10-clemote.rules
+```
 
 With contents:
 
-    ACTION=="add", ATTRS{idVendor}=="1019", ATTRS{idProduct}=="0f38", SYMLINK+="remote_control", MODE="0777"
+```
+ACTION=="add", ATTRS{idVendor}=="1019", ATTRS{idProduct}=="0f38", SYMLINK+="remote_control", MODE="0777"
+```
 
 Replace the `1019` and `0f38` values in this example with the values you found in the `vendor` and `product` sections of the output from `lsinput`. The values must be 4 digits in udev, so add `0`s if necessary. Remove `0x`. E.g.: `0xf38` -> `0f38`.
 
@@ -60,11 +70,14 @@ To activate the new rule, unplug and plug the remote control receiver or reboot 
 
 You should now be able to start the app as a regular user with:
 
-    $ clemote remote /dev/remote_control
+```
+$ clemote remote /dev/remote_control
+```
 
 ### Setup
 
 * Allow the app to trigger refresh in Clementine to show changes:
+
 
     Clementine > Tools > Preferences > Music Library
         > Monitor library for changes > Enable
@@ -74,8 +87,9 @@ You should now be able to start the app as a regular user with:
 
 * This app does not need LIRC, and LIRC may interfere if installed. Try:
 
-    $ apt remove lirc
-
+```
+$ sudo apt remove lirc
+```
 
 ### Technologies
 
@@ -92,29 +106,34 @@ Should work on Ubuntu 18.04 and other distributions based on it.
 
 Packaged dependencies:
 
-    $ sudo apt install build-essential cmake \
-    libboost-filesystem-dev libboost-system-dev \
-    libsystemd-dev libpulse-dev libevdev-dev
-
+```
+$ sudo apt install build-essential cmake \
+libboost-filesystem-dev libboost-system-dev \
+libsystemd-dev libpulse-dev libevdev-dev
+```
 
 sdbus-cpp:
 
-    $ git clone https://github.com/Kistler-Group/sdbus-cpp.git
-    $ cd sdbus-cpp
-    $ ./autogen.sh --disable-tests
-    $ make -j$(nproc)
-
+```
+$ git clone https://github.com/Kistler-Group/sdbus-cpp.git
+$ cd sdbus-cpp
+$ ./autogen.sh --disable-tests
+$ make -j$(nproc)
+```
 
 taglib:
 
-    $ git clone https://github.com/taglib/taglib.git
-    $ cd taglib
-    $ cmake -DCMAKE_BUILD_TYPE=Release .
-    $ make -j$(nproc)
-    $ sudo make install
-
+```
+$ git clone https://github.com/taglib/taglib.git
+$ cd taglib
+$ cmake -DCMAKE_BUILD_TYPE=Release .
+$ make -j$(nproc)
+$ sudo make install
+```
 
 Troubleshoot D-Bus issues:
 
-    $ sudo apt install d-feet
-    $ d-feet
+```
+$ sudo apt install d-feet
+$ d-feet
+```
