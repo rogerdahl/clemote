@@ -10,17 +10,10 @@ find_package(
 )
 
 include_directories(
-  libraries/fmt/include
   libraries/sdbus-cpp/include
-  libraries/taglib
-  libraries/taglib/taglib
-  libraries/taglib/taglib/mpeg/id3v2
-  libraries/taglib/taglib/toolkit
 )
 
 link_directories(
-  libraries/fmt/
-  libraries/taglib/taglib
   libraries/sdbus-cpp/src/.libs
 )
 
@@ -29,11 +22,11 @@ link_libraries(
   ${Boost_SYSTEM_LIBRARY}
   evdev
   fmt
+  pulse
   sdbus-c++
   systemd
   tag
   z
-  pulse
 )
 
 add_executable(

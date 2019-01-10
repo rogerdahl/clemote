@@ -1,17 +1,18 @@
-#include "tag.h"
 #include <iostream>
 #include <cstdlib>
 
-#include <ape/apetag.h>
-#include <mpeg/id3v1/id3v1tag.h>
-#include <mpeg/id3v2/frames/popularimeterframe.h>
-#include <mpeg/id3v2/frames/textidentificationframe.h>
-#include <mpeg/id3v2/id3v2frame.h>
-#include <mpeg/id3v2/id3v2header.h>
-#include <mpeg/id3v2/id3v2tag.h>
-#include <mpeg/mpegfile.h>
-
 #include <fmt/format.h>
+
+#include <taglib/apetag.h>
+#include <taglib/id3v1tag.h>
+#include <taglib/popularimeterframe.h>
+#include <taglib/textidentificationframe.h>
+#include <taglib/id3v2frame.h>
+#include <taglib/id3v2header.h>
+#include <taglib/id3v2tag.h>
+#include <taglib/mpegfile.h>
+
+#include "tag.h"
 
 using namespace std;
 using namespace TagLib;
