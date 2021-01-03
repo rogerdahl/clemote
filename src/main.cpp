@@ -9,9 +9,12 @@
 
 #include "clementine_dbus.h"
 #include "tag.h"
-#include "pulse_audio.h"
+#include "alsa_volume.h"
 
 #include <sys/stat.h>
+
+// Couldn't find example for changing volume.
+//#include <soundio/soundio.h>
 
 using namespace std;
 using namespace boost::filesystem;
@@ -24,6 +27,8 @@ void touchParentDir(const path& filePath);
 void touchCurrentParentDir(ClementineDbus& clem);
 void setRatingOnCurrent(ClementineDbus& clem, int ratingInt, bool skipToNext);
 void syncMyRatingToPopularityMeterRecursive(const path& rootDir);
+
+const int VOLUME_ADJ_STEP = 5;
 
 int main(int argc, char** argv)
 {
@@ -66,7 +71,8 @@ int remoteControl(const string& device)
   }
 
   ClementineDbus clem;
-  PulseAudio pulseAudio;
+
+  launch_thread();
 
   while (true) {
     struct input_event ev;
@@ -199,11 +205,11 @@ int remoteControl(const string& device)
       // System volume
 
     case KEY_VOLUMEUP: {
-      pulseAudio.volumeUp();
+      adjust_volume(VOLUME_ADJ_STEP);
       break;
     }
     case KEY_VOLUMEDOWN: {
-      pulseAudio.volumeDown();
+      adjust_volume(-VOLUME_ADJ_STEP);
       break;
     }
 

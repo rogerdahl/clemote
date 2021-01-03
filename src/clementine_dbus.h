@@ -6,13 +6,13 @@
 
 #include "int_types.h"
 
-typedef std::unique_ptr<sdbus::IObjectProxy> IProxyPtr;
+typedef std::unique_ptr<sdbus::IProxy> IProxyPtr;
 typedef std::unique_ptr<sdbus::IConnection> IConnectionPtr;
 
 typedef std::map<std::string, sdbus::Variant> MetadataMap;
 
 // void onSeeked(const int64_t v);
-// void onSeeked(sdbus::Signal& signal);
+void onSeeked(sdbus::Signal& signal);
 // void onTrackMetadataChanged(sdbus::Signal& signal);
 
 class ClementineDbus
@@ -38,15 +38,31 @@ class ClementineDbus
   std::string getCurrentTrackId();
   void removeCurrentTrackFromPlaylist();
   void removeTrackFromPlaylist(std::string trackId);
+  void waitForClementine();
   //
   private:
-  void createPlayerProxy();
+  void createProxy();
+
+  void dump();
+
   //  void registerSeekedHandler();
   //  void registerTrackMedatadataChangedHandler();
-  //  void onSeeked(const int64_t v);
 
   IProxyPtr playerProxy;
   IProxyPtr trackListProxy;
   IConnectionPtr connection;
   MetadataMap getMetadataMap() const;
 };
+
+// class ClemListen
+//{
+// public:
+//  ClemListen();
+//  ~ClemListen();
+//  void registerSeekedHandler();
+//  IConnectionPtr connection;
+//};
+//
+//
+
+void launch_thread();

@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$/.." vcs="" />
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Z/l/sdbus-cpp" vcs="" />
+    <mapping directory="$PROJECT_DIR$/Z/l/sdbus-cpp-newer-maybe" vcs="" />
+    <mapping directory="$PROJECT_DIR$/l/libsound/libsoundio" vcs="" />
+    <mapping directory="$PROJECT_DIR$/l/sdbus-cpp" vcs="" />
+    <mapping directory="$PROJECT_DIR$/l/sdbus-cpp-newer-maybe" vcs="" />
+    <mapping directory="$PROJECT_DIR$/libraries" vcs="" />
+    <mapping directory="$PROJECT_DIR$/libraries/libsound/libsoundio" vcs="" />
   </component>
 </project>
