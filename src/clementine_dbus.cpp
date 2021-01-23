@@ -1,18 +1,25 @@
 #include "clementine_dbus.h"
 
 #include <algorithm>
-#include <chrono>
-#include <thread>
+#include <fmt/format.h>
 
 #include <boost/filesystem/convenience.hpp>
 #include <boost/algorithm/string/replace.hpp>
 
-#include <fmt/format.h>
 #include <systemd/sd-bus.h>
 
 using namespace std;
 using namespace boost::filesystem;
 using namespace boost::algorithm;
+
+// Ubuntu 16.04
+
+// const char* CLEMENTINE_SERVICE_NAME = "org.mpris.clementine";
+// const char* PLAYER_OBJECT_PATH = "/Player";
+// const char* TRACK_LIST_OBJECT_PATH = "/TrackList";
+// const char* MEDIA_PLAYER_INTERFACE_NAME = "org.freedesktop.MediaPlayer";
+
+// Ubuntu 18.04
 
 const char* CLEMENTINE_SERVICE_NAME = "org.mpris.MediaPlayer2.clementine";
 const char* PLAYER_OBJECT_PATH = "/org/mpris/MediaPlayer2";
@@ -22,9 +29,7 @@ const char* TRACK_LIST_INTERFACE_NAME = "org.mpris.MediaPlayer2.TrackList";
 ClementineDbus::ClementineDbus()
 {
   connection = sdbus::createSessionBusConnection();
-  createProxy();
-
-  waitForClementine();
+  createPlayerProxy();
 
   //  registerSeekedHandler();
   //  playerProxy->finishRegistration();
@@ -38,24 +43,10 @@ ClementineDbus::ClementineDbus()
 
 ClementineDbus::~ClementineDbus() = default;
 
-void ClementineDbus::createProxy()
+void ClementineDbus::createPlayerProxy()
 {
-  playerProxy =
-    sdbus::createProxy(*connection, CLEMENTINE_SERVICE_NAME, PLAYER_OBJECT_PATH);
-}
-
-// Wait for Clementine to show up on the D-Bus
-void ClementineDbus::waitForClementine()
-{
-  while (true) {
-    try {
-      getPlayerPosition();
-    } catch (std::exception&) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      continue;
-    }
-    break;
-  }
+  playerProxy = sdbus::createProxy(
+    *connection, CLEMENTINE_SERVICE_NAME, PLAYER_OBJECT_PATH);
 }
 
 void ClementineDbus::playerPlay()
@@ -234,8 +225,8 @@ void thread_function()
   fmt::print("thread_function()\n");
 
   auto connection = sdbus::createSessionBusConnection();
-  auto playerProxy =
-    sdbus::createProxy(*connection, CLEMENTINE_SERVICE_NAME, PLAYER_OBJECT_PATH);
+  auto playerProxy = sdbus::createProxy(
+    *connection, CLEMENTINE_SERVICE_NAME, PLAYER_OBJECT_PATH);
 
   playerProxy->uponSignal("Seeked")
     .onInterface(MEDIA_PLAYER_INTERFACE_NAME)
@@ -257,7 +248,7 @@ void thread_function()
     .call([](sdbus::Variant v) { onTrackMetadataChanged(v); });
 
   playerProxy->finishRegistration();
-  connection->enterEventLoop();
+  connection->enterProcessingLoop();
 }
 
 //  std:vector<sdbus::Variant> t = signal;

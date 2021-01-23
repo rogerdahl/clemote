@@ -38,10 +38,9 @@ class ClementineDbus
   std::string getCurrentTrackId();
   void removeCurrentTrackFromPlaylist();
   void removeTrackFromPlaylist(std::string trackId);
-  void waitForClementine();
   //
   private:
-  void createProxy();
+  void createPlayerProxy();
 
   void dump();
 

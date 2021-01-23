@@ -55,6 +55,7 @@ int main(int argc, char** argv)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 
+#pragma ide diagnostic ignored "EndlessLoop"
 int remoteControl(const string& device)
 {
   int fevdev = open(device.c_str(), O_RDONLY);
@@ -98,6 +99,8 @@ int remoteControl(const string& device)
     case KEY_PLAY:
       clem.playerPlay();
       break;
+
+    case KEY_COMPOSE:
     case KEY_PAUSE:
     case KEY_SUBTITLE:
       clem.playerPause();
@@ -105,15 +108,18 @@ int remoteControl(const string& device)
     case KEY_STOP:
       clem.playerStop();
       break;
+    case KEY_UP:
     case KEY_PREVIOUS:
     //    case KEY_SUBTITLE:
     case KEY_EXIT:
       clem.playerPrev();
       break;
+    case KEY_DOWN:
     case KEY_NEXT:
     case KEY_INFO:
       clem.playerNext();
       break;
+    case KEY_LEFT:
     case KEY_REWIND: {
       // skip back 30 sec
       auto pos = clem.getPlayerPosition();
@@ -128,6 +134,7 @@ int remoteControl(const string& device)
         newPos % 60);
       break;
     }
+    case KEY_RIGHT:
     case KEY_FASTFORWARD: {
       // skip forward 30 sec
       auto pos = clem.getPlayerPosition();
@@ -178,26 +185,30 @@ int remoteControl(const string& device)
       setRatingOnCurrent(clem, 5, false);
       break;
 
-      //
-      // Tag and skip to next, score 1 - 5
-      //
-
+    //
+    // Tag and skip to next, score 1 - 5
+    //
+    case KEY_1:
     case KEY_NUMERIC_3:
       setRatingOnCurrent(clem, 1, true);
       break;
 
+    case KEY_2:
     case KEY_NUMERIC_6:
       setRatingOnCurrent(clem, 2, true);
       break;
 
+    case KEY_3:
     case KEY_NUMERIC_9:
       setRatingOnCurrent(clem, 3, true);
       break;
 
+    case KEY_4:
     case KEY_NUMERIC_POUND:
       setRatingOnCurrent(clem, 4, true);
       break;
 
+    case KEY_5:
     case KEY_ENTER:
       setRatingOnCurrent(clem, 5, true);
       break;
@@ -213,12 +224,13 @@ int remoteControl(const string& device)
       break;
     }
 
-      // Internal Clementine volume
-
+    // Internal Clementine volume
+    case KEY_PAGEUP:
     case KEY_CHANNELUP: {
       clem.volumeUp();
       break;
     }
+    case KEY_PAGEDOWN:
     case KEY_CHANNELDOWN: {
       clem.volumeDown();
       break;
@@ -228,16 +240,16 @@ int remoteControl(const string& device)
       // File operations
       //
 
-    case KEY_RECORD: {
-      // Delete immediately, with extreme prejudice
-      string path = clem.getPlayerCurrentPath();
-      fmt::print("Deleting file:\n{}\n", path);
-      string trackId = clem.getCurrentTrackId();
-      clem.playerNext();
-      remove(path);
-      clem.removeTrackFromPlaylist(trackId);
-      break;
-    }
+      // case KEY_RECORD: {
+      //   // Delete immediately, with extreme prejudice
+      //   string path = clem.getPlayerCurrentPath();
+      //   fmt::print("Deleting file:\n{}\n", path);
+      //   string trackId = clem.getCurrentTrackId();
+      //   clem.playerNext();
+      //   remove(path);
+      //   clem.removeTrackFromPlaylist(trackId);
+      //   break;
+      // }
 
     case KEY_BLUE: {
       // Tag for delete by renaming file
