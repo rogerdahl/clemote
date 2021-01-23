@@ -107,15 +107,18 @@ $ git clone https://github.com/Kistler-Group/sdbus-cpp.git libraries/sdbus-cpp
 $ cd libraries/sdbus-cpp
 ```
 
-Follow the instructions in `INSTALL`.
+- Follow the instructions in `INSTALL`.
 
-Build:
+Get the source and build:
 
 ```shell
-$ cd clemote
-$ mkdir -p build && cd build
-$ cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ..
-$ ninja
+$ bash -c '
+  git clone git@github.com:rogerdahl/clemote.git 
+  cd clemote
+  mkdir -p build && cd build
+  cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ..
+  ninja
+'
 ```
 
 ### Troubleshooting
