@@ -2,5 +2,10 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$/.." vcs="Git" />
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Z/l/sdbus-cpp" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Z/l/sdbus-cpp-newer-maybe" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/libraries" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/libraries/libsound/libsoundio" vcs="Git" />
   </component>
 </project>
