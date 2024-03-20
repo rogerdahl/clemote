@@ -1,8 +1,8 @@
-#include <iostream>
 #include <fmt/format.h>
 #include <linux/input.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/replace.hpp>
@@ -10,8 +10,7 @@
 #include "clementine_dbus.h"
 #include "tag.h"
 #include "alsa_volume.h"
-
-#include <sys/stat.h>
+#include "event_code_to_str.h"
 
 // Couldn't find example for changing volume.
 //#include <soundio/soundio.h>
@@ -22,7 +21,6 @@ using namespace boost::algorithm;
 
 int remoteControl(const string& device);
 
-string eventCodeToString(int eventCode);
 void touchParentDir(const path& filePath);
 void touchCurrentParentDir(ClementineDbus& clem);
 void setRatingOnCurrent(ClementineDbus& clem, int ratingInt, bool skipToNext);
@@ -66,19 +64,26 @@ int remoteControl(const string& device)
 
   int result = ioctl(fevdev, EVIOCGRAB, 1);
   if (result) {
-    fmt::print(
-      "Error: Unable to get exclusive access to device. error={}", result);
+    fmt::print("Error: Unable to get exclusive access to device. error={}\n", result);
     return result;
   }
 
   ClementineDbus clem;
 
-  launch_thread();
+  launchThread();
 
   while (true) {
-    struct input_event ev;
-    read(fevdev, &ev, sizeof(struct input_event));
+    struct input_event ev = {};
+    auto size = read(fevdev, &ev, sizeof(struct input_event));
 
+    if (size == -1) {
+      fmt::print("event read() failed\n");
+      continue;
+    }
+    if (size == 0) {
+      fmt::print("event read() returned EOF\n");
+      continue;
+    }
     if (ev.type != 1 || ev.value != 1) {
       continue;
     }
@@ -105,18 +110,23 @@ int remoteControl(const string& device)
     case KEY_SUBTITLE:
       clem.playerPause();
       break;
+    case KEY_PLAYPAUSE:
+      clem.playerPlayPause();
+      break;
     case KEY_STOP:
       clem.playerStop();
       break;
     case KEY_UP:
     case KEY_PREVIOUS:
-    //    case KEY_SUBTITLE:
-    case KEY_EXIT:
+    case KEY_PREVIOUSSONG:
+      //    case KEY_SUBTITLE:
+      // case KEY_EXIT:
       clem.playerPrev();
       break;
     case KEY_DOWN:
     case KEY_NEXT:
     case KEY_INFO:
+    case KEY_NEXTSONG:
       clem.playerNext();
       break;
     case KEY_LEFT:
@@ -129,9 +139,7 @@ int remoteControl(const string& device)
       clem.setPlayerPosition(trackId, newPos);
       pos /= 1000;
       newPos /= 1000;
-      fmt::print(
-        "Skip back: {}:{:02} -> {}:{:02}\n", pos / 60, pos % 60, newPos / 60,
-        newPos % 60);
+      fmt::print("Skip back: {}:{:02} -> {}:{:02}\n", pos / 60, pos % 60, newPos / 60, newPos % 60);
       break;
     }
     case KEY_RIGHT:
@@ -144,13 +152,12 @@ int remoteControl(const string& device)
       clem.setPlayerPosition(trackId, newPos);
       pos /= 1000;
       newPos /= 1000;
-      fmt::print(
-        "Skip forward: {}:{:02} -> {}:{:02}\n", pos / 60, pos % 60, newPos / 60,
-        newPos % 60);
+      fmt::print("Skip forward: {}:{:02} -> {}:{:02}\n", pos / 60, pos % 60, newPos / 60, newPos % 60);
       break;
     }
-
-    case KEY_DVD: {
+    case KEY_YELLOW:
+    case KEY_DVD:
+    case KEY_0: {
       string path = clem.getPlayerCurrentPath();
       fmt::print("~~~~\n\nCurrently playing:\n{}\n\n", path);
       dump(path);
@@ -264,9 +271,7 @@ int remoteControl(const string& device)
     }
 
     default:
-      fmt::print(
-        "Unhandled: code={}({}) value={}\n", eventCodeToString(ev.code),
-        ev.code, ev.value);
+      fmt::print("Unhandled: code={}(0x{:x}) symbol={}\n", ev.code, ev.code, eventCodeToString(ev.code));
       break;
     }
   }
@@ -310,137 +315,5 @@ void touchParentDir(const path& filePath)
   if (f >= 0) {
     futimens(f, nullptr);
     close(f);
-  }
-}
-
-string eventCodeToString(int eventCode)
-{
-  switch (eventCode) {
-  case 28:
-    return "KEY_ENTER";
-  case 103:
-    return "KEY_UP";
-  case 105:
-    return "KEY_LEFT";
-  case 106:
-    return "KEY_RIGHT";
-  case 108:
-    return "KEY_DOWN";
-  case 111:
-    return "KEY_DELETE";
-  case 113:
-    return "KEY_MUTE";
-  case 114:
-    return "KEY_VOLUMEDOWN";
-  case 115:
-    return "KEY_VOLUMEUP";
-  case 119:
-    return "KEY_PAUSE";
-  case 128:
-    return "KEY_STOP";
-  case 142:
-    return "KEY_SLEEP";
-  case 161:
-    return "KEY_EJECTCD";
-  case 164:
-    return "KEY_PLAYPAUSE";
-  case 167:
-    return "KEY_RECORD";
-  case 168:
-    return "KEY_REWIND";
-  case 174:
-    return "KEY_EXIT";
-  case 207:
-    return "KEY_PLAY";
-  case 208:
-    return "KEY_FASTFORWARD";
-  case 210:
-    return "KEY_PRINT";
-  case 212:
-    return "KEY_CAMERA";
-  case 224:
-    return "KEY_BRIGHTNESSDOWN";
-  case 225:
-    return "KEY_BRIGHTNESSUP";
-  case 226:
-    return "KEY_MEDIA";
-  case 352:
-    return "KEY_OK";
-  case 356:
-    return "KEY_POWER2";
-  case 358:
-    return "KEY_INFO";
-  case 365:
-    return "KEY_EPG";
-  case 366:
-    return "KEY_PVR";
-  case 368:
-    return "KEY_LANGUAGE";
-  case 369:
-    return "KEY_TITLE";
-  case 370:
-    return "KEY_SUBTITLE";
-  case 372:
-    return "KEY_ZOOM";
-  case 373:
-    return "KEY_MODE";
-  case 377:
-    return "KEY_TV";
-  case 385:
-    return "KEY_RADIO";
-  case 386:
-    return "KEY_TUNER";
-  case 387:
-    return "KEY_PLAYER";
-  case 389:
-    return "KEY_DVD";
-  case 392:
-    return "KEY_AUDIO";
-  case 393:
-    return "KEY_VIDEO";
-  case 398:
-    return "KEY_RED";
-  case 399:
-    return "KEY_GREEN";
-  case 400:
-    return "KEY_YELLOW";
-  case 401:
-    return "KEY_BLUE";
-  case 402:
-    return "KEY_CHANNELUP";
-  case 403:
-    return "KEY_CHANNELDOWN";
-  case 407:
-    return "KEY_NEXT";
-  case 412:
-    return "KEY_PREVIOUS";
-  case 425:
-    return "KEY_PRESENTATION";
-  case 512:
-    return "KEY_NUMERIC_0";
-  case 513:
-    return "KEY_NUMERIC_1";
-  case 514:
-    return "KEY_NUMERIC_2";
-  case 515:
-    return "KEY_NUMERIC_3";
-  case 516:
-    return "KEY_NUMERIC_4";
-  case 517:
-    return "KEY_NUMERIC_5";
-  case 518:
-    return "KEY_NUMERIC_6";
-  case 519:
-    return "KEY_NUMERIC_7";
-  case 520:
-    return "KEY_NUMERIC_8";
-  case 521:
-    return "KEY_NUMERIC_9";
-  case 522:
-    return "KEY_NUMERIC_STAR";
-  case 523:
-    return "KEY_NUMERIC_POUND";
-  default:
-    return "<UNKNOWN>";
   }
 }

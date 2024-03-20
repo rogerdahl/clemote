@@ -8,7 +8,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_FLAGS -Wfatal-errors)
 
 find_package(
-  Boost COMPONENTS system filesystem REQUIRED
+    Boost COMPONENTS system filesystem REQUIRED
 )
 
 include_directories(
@@ -20,24 +20,26 @@ link_directories(
 )
 
 link_libraries(
-  ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY}
-  evdev
-  fmt
-  pulse
-  sdbus-c++
-  systemd
-  tag
-  z
-  pthread
-  asound
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_SYSTEM_LIBRARY}
+    evdev
+    fmt
+    pulse
+    sdbus-c++
+    systemd
+    tag
+    z
+    pthread
+    asound
 )
 
 add_executable(
-  clemote
-  src/main.cpp
-  src/clementine_dbus.cpp
-  src/tag.cpp
-  src/alsa_volume.cpp
+    clemote
+    src/main.cpp
+    src/clementine_dbus.cpp
+    src/tag.cpp
+    src/alsa_volume.cpp
+    src/event_code_to_str.cpp
+    src/pulse_audio.cpp
 )
 

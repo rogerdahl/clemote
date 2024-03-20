@@ -1,15 +1,16 @@
+#include <string>
+#include <sstream>
+
 #include "clementine_dbus.h"
 
-#include <algorithm>
 #include <fmt/format.h>
-
-#include <boost/filesystem/convenience.hpp>
 #include <boost/algorithm/string/replace.hpp>
-
 #include <systemd/sd-bus.h>
 
+#include "tag.h"
+
 using namespace std;
-using namespace boost::filesystem;
+// using namespace boost::filesystem;
 using namespace boost::algorithm;
 
 // Ubuntu 16.04
@@ -25,6 +26,8 @@ const char* CLEMENTINE_SERVICE_NAME = "org.mpris.MediaPlayer2.clementine";
 const char* PLAYER_OBJECT_PATH = "/org/mpris/MediaPlayer2";
 const char* MEDIA_PLAYER_INTERFACE_NAME = "org.mpris.MediaPlayer2.Player";
 const char* TRACK_LIST_INTERFACE_NAME = "org.mpris.MediaPlayer2.TrackList";
+
+std::string decodeUrl(const std::string& url);
 
 ClementineDbus::ClementineDbus()
 {
@@ -45,8 +48,7 @@ ClementineDbus::~ClementineDbus() = default;
 
 void ClementineDbus::createPlayerProxy()
 {
-  playerProxy = sdbus::createProxy(
-    *connection, CLEMENTINE_SERVICE_NAME, PLAYER_OBJECT_PATH);
+  playerProxy = sdbus::createProxy(*connection, CLEMENTINE_SERVICE_NAME, PLAYER_OBJECT_PATH);
 }
 
 void ClementineDbus::playerPlay()
@@ -65,6 +67,12 @@ void ClementineDbus::playerPause()
 {
   fmt::print("Pause\n");
   playerProxy->callMethod("Pause").onInterface(MEDIA_PLAYER_INTERFACE_NAME);
+}
+
+void ClementineDbus::playerPlayPause()
+{
+  fmt::print("PlayPause\n");
+  playerProxy->callMethod("PlayPause").onInterface(MEDIA_PLAYER_INTERFACE_NAME);
 }
 
 void ClementineDbus::playerPrev()
@@ -112,29 +120,24 @@ void ClementineDbus::volumeDown()
 
 double ClementineDbus::getVolume()
 {
-  return static_cast<double>(playerProxy->getProperty("Volume").onInterface(
-    MEDIA_PLAYER_INTERFACE_NAME));
+  return static_cast<double>(playerProxy->getProperty("Volume").onInterface(MEDIA_PLAYER_INTERFACE_NAME));
 }
 
 void ClementineDbus::setVolume(double vol)
 {
-  playerProxy->setProperty("Volume")
-    .onInterface(MEDIA_PLAYER_INTERFACE_NAME)
-    .toValue(vol);
+  playerProxy->setProperty("Volume").onInterface(MEDIA_PLAYER_INTERFACE_NAME).toValue(vol);
 }
 
 s64 ClementineDbus::getPlayerPosition()
 {
-  return static_cast<s64>(playerProxy->getProperty("Position")
-                            .onInterface(MEDIA_PLAYER_INTERFACE_NAME))
-         / 1000;
+  return static_cast<s64>(playerProxy->getProperty("Position").onInterface(MEDIA_PLAYER_INTERFACE_NAME)) / 1000;
 }
 
-void ClementineDbus::setPlayerPosition(string trackId, s64 pos)
+void ClementineDbus::setPlayerPosition(const string& trackId, s64 pos)
 {
   playerProxy->callMethod("SetPosition")
     .onInterface(MEDIA_PLAYER_INTERFACE_NAME)
-    .withArguments(sdbus::ObjectPath(trackId.c_str()), pos * 1000);
+    .withArguments(sdbus::ObjectPath(trackId), pos * 1000);
 }
 
 string ClementineDbus::getPlayerCurrentPath()
@@ -142,13 +145,12 @@ string ClementineDbus::getPlayerCurrentPath()
   MetadataMap metadataMap = getMetadataMap();
   auto path = metadataMap["xesam:url"].get<string>();
   replace_first(path, "file://", "");
-  return path;
+  return decodeUrl(path);
 }
 
 MetadataMap ClementineDbus::getMetadataMap() const
 {
-  MetadataMap metadataMap = playerProxy->getProperty("Metadata")
-                              .onInterface(MEDIA_PLAYER_INTERFACE_NAME);
+  MetadataMap metadataMap = playerProxy->getProperty("Metadata").onInterface(MEDIA_PLAYER_INTERFACE_NAME);
   return metadataMap;
 }
 
@@ -164,12 +166,12 @@ void ClementineDbus::removeCurrentTrackFromPlaylist()
   removeTrackFromPlaylist(trackId);
 }
 
-void ClementineDbus::removeTrackFromPlaylist(string trackId)
+void ClementineDbus::removeTrackFromPlaylist(const string& trackId)
 {
   fmt::print("Removing from playlist: {}\n", trackId);
   playerProxy->callMethod("RemoveTrack")
     .onInterface(TRACK_LIST_INTERFACE_NAME)
-    .withArguments(sdbus::ObjectPath(trackId.c_str()));
+    .withArguments(sdbus::ObjectPath(trackId));
 }
 
 // WORKS
@@ -194,61 +196,67 @@ void ClementineDbus::removeTrackFromPlaylist(string trackId)
 
 #include <thread>
 
-void onSeeked3(const int64_t v);
+void onSeeked3(int64_t v);
 // void onTrackMetadataChanged(sdbus::Variant);
-void thread_function();
+void threadFunction();
 
-void launch_thread()
+void launchThread()
 {
-  std::thread* t = new std::thread(&thread_function);
+  auto t = new std::thread(&threadFunction);
 }
 
 void onTrackMetadataChanged(sdbus::Variant& m)
 {
-  //  fmt::print("*******************************************
-  //  onTrackMetadataChanged {}\n",
-  //             m);// {}\n", v);
-  fmt::print("###\n");
-
-  //  for (auto &v : m) {
-  //    fmt::print("{} - {}\n", v.first, v.second.peekValueType());
-  //    if (v.second.peekValueType() == "i") {
-  //      fmt::print("{} - {}\n", v.first, v.second.get<int>());
-  //    } else if (v.second.peekValueType() == "s") {
-  //      fmt::print("{} - {}\n", v.first, v.second.get<string>());
-  //    }
-  //  }
+  // auto p =  getPlayerCurrentPath();
+  // auto x = getMyRating("");
+  //
+  // // fmt::print("###\n");
+  //
+  // //  fmt::print("*******************************************
+  // //  onTrackMetadataChanged {}\n",
+  // //             m);// {}\n", v);
+  //
+  // //  for (auto &v : m) {
+  // //    fmt::print("{} - {}\n", v.first, v.second.peekValueType());
+  // //    if (v.second.peekValueType() == "i") {
+  // //      fmt::print("{} - {}\n", v.first, v.second.get<int>());
+  // //    } else if (v.second.peekValueType() == "s") {
+  // //      fmt::print("{} - {}\n", v.first, v.second.get<string>());
+  // //    }
+  // //  }
 }
 
-void thread_function()
+void threadFunction()
 {
-  fmt::print("thread_function()\n");
+  fmt::print("threadFunction()\n");
 
   auto connection = sdbus::createSessionBusConnection();
-  auto playerProxy = sdbus::createProxy(
-    *connection, CLEMENTINE_SERVICE_NAME, PLAYER_OBJECT_PATH);
+  auto playerProxy = sdbus::createProxy(*connection, CLEMENTINE_SERVICE_NAME, PLAYER_OBJECT_PATH);
 
-  playerProxy->uponSignal("Seeked")
-    .onInterface(MEDIA_PLAYER_INTERFACE_NAME)
-    .call([](const int64_t v) { onSeeked3(v); });
+  playerProxy->uponSignal("Seeked").onInterface(MEDIA_PLAYER_INTERFACE_NAME).call([](const int64_t v) {
+    onSeeked3(v);
+  });
+
+  // playerProxy->uponSignal("PropertiesChanged").onInterface(MEDIA_PLAYER_INTERFACE_NAME).call([](const int64_t v) {
+  //     propertiesChanged(v);
+  // });
 
   // signal time=1548026128.798239 sender=:1.18 -> destination=(null
   // destination) serial=1375 path=/org/mpris/MediaPlayer2;
   // interface=org.freedesktop.DBus.Properties; member=PropertiesChanged
   //   string "org.mpris.MediaPlayer2.Player"
 
-  auto propProxy = sdbus::createProxy(
-    *connection, "org.freedesktop.DBus", "org.freedesktop.DBus");
+  auto propProxy = sdbus::createProxy(*connection, "org.freedesktop.DBus", "org.freedesktop.DBus");
 
   //  playerProxy->uponSignal("PropertiesChanged").onInterface("org.freedesktop.DBus.Properties")
   //    .call([](sdbus::Signal& v) { onTrackMetadataChanged(v); });
 
-  playerProxy->uponSignal("PropertiesChanged")
-    .onInterface("org.freedesktop.DBus.Properties")
-    .call([](sdbus::Variant v) { onTrackMetadataChanged(v); });
+  playerProxy->uponSignal("PropertiesChanged").onInterface("org.freedesktop.DBus.Properties").call([](sdbus::Variant v) {
+    onTrackMetadataChanged(v);
+  });
 
   playerProxy->finishRegistration();
-  connection->enterProcessingLoop();
+  connection->enterEventLoop();
 }
 
 //  std:vector<sdbus::Variant> t = signal;
@@ -289,7 +297,25 @@ void thread_function()
 
 void onSeeked3(const int64_t v)
 {
-  fmt::print("******************************************* onSeeked3 {}\n", v);
+  fmt::print("event: onSeeked3 {}\n", v);
+}
+
+std::string decodeUrl(const string& url)
+{
+  std::ostringstream decodedUrl;
+  for (std::size_t i = 0; i < url.size(); ++i) {
+    if (url[i] == '%') {
+      int value;
+      std::istringstream is(url.substr(i + 1, 2));
+      is >> std::hex >> value;
+      decodedUrl << static_cast<char>(value);
+      i += 2;
+    }
+    else {
+      decodedUrl << url[i];
+    }
+  }
+  return decodedUrl.str();
 }
 
 // signal time=1548026128.798239 sender=:1.18 -> destination=(null destination)

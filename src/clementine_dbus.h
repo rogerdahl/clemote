@@ -24,6 +24,7 @@ class ClementineDbus
   void playerPlay();
   void playerStop();
   void playerPause();
+  void playerPlayPause();
   void playerPrev();
   void playerNext();
   void playerMute();
@@ -32,12 +33,12 @@ class ClementineDbus
   double getVolume();
   void setVolume(double vol);
   s64 getPlayerPosition();
-  void setPlayerPosition(std::string trackId, s64 pos);
+  void setPlayerPosition(const std::string& trackId, s64 pos);
   std::string getPlayerCurrentPath();
   // TrackList
   std::string getCurrentTrackId();
   void removeCurrentTrackFromPlaylist();
-  void removeTrackFromPlaylist(std::string trackId);
+  void removeTrackFromPlaylist(const std::string& trackId);
   //
   private:
   void createPlayerProxy();
@@ -64,4 +65,4 @@ class ClementineDbus
 //
 //
 
-void launch_thread();
+void launchThread();

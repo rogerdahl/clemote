@@ -1,5 +1,4 @@
 #include <iostream>
-#include <cstdlib>
 
 #include <fmt/format.h>
 
@@ -18,67 +17,68 @@ using namespace std;
 using namespace TagLib;
 
 void createOrUpdateUserTextField(
-  MPEG::File& f, ID3v2::Tag* id3v2tag, const string& frameIdStr,
-  const string& descriptionStr, const string& ratingStr);
+  MPEG::File& f, ID3v2::Tag* id3v2tag, const string& frameIdStr, const string& descriptionStr, const string& ratingStr);
 
-void createOrUpdatePopularityMeter(
-  MPEG::File& f, ID3v2::Tag* id3v2tag, int ratingInt);
+void createOrUpdatePopularityMeter(MPEG::File& f, ID3v2::Tag* id3v2tag, int ratingInt);
+
+void dumpId3V1(MPEG::File& f);
+void dumpId3V2(MPEG::File& f);
+void dumpApe(MPEG::File& f);
 
 void dump(std::string& path)
 {
-
   MPEG::File f(path.c_str());
+  dumpId3V1(f);
+  dumpId3V2(f);
+  dumpApe(f);
+  fmt::print("\n");
+}
 
-  ID3v2::Tag* id3v2tag = f.ID3v2Tag();
-
-  if (id3v2tag) {
-
-    cout << "ID3v2." << id3v2tag->header()->majorVersion() << "."
-         << id3v2tag->header()->revisionNumber() << ", "
-         << id3v2tag->header()->tagSize() << " bytes in tag" << endl;
-
-    auto it = id3v2tag->frameList().begin();
-    for (; it != id3v2tag->frameList().end(); it++)
-      cout << (*it)->frameID() << " - \"" << (*it)->toString() << "\"" << endl;
-  }
-  else
-    cout << "file does not have a valid id3v2 tag" << endl;
-
-  cout << endl << "ID3v1" << endl;
-
+void dumpId3V1(MPEG::File& f)
+{
   ID3v1::Tag* id3v1tag = f.ID3v1Tag();
-
-  if (id3v1tag) {
-    cout << "title   - \"" << id3v1tag->title() << "\"" << endl;
-    cout << "artist  - \"" << id3v1tag->artist() << "\"" << endl;
-    cout << "album   - \"" << id3v1tag->album() << "\"" << endl;
-    cout << "year    - \"" << id3v1tag->year() << "\"" << endl;
-    cout << "comment - \"" << id3v1tag->comment() << "\"" << endl;
-    cout << "track   - \"" << id3v1tag->track() << "\"" << endl;
-    cout << "genre   - \"" << id3v1tag->genre() << "\"" << endl;
+  if (!id3v1tag) {
+    fmt::print("No ID3v1 tag...\n");
+    return;
   }
-  else
-    cout << "file does not have a valid id3v1 tag" << endl;
+  fmt::print("ID3v1:\n");
+  fmt::print("title: {}\n", id3v1tag->title().toCString());
+  fmt::print("artist: {}\n", id3v1tag->artist().toCString());
+  fmt::print("album: {}\n", id3v1tag->album().toCString());
+  fmt::print("year: {}\n", id3v1tag->year());
+  fmt::print("comment: {}\n", id3v1tag->comment().toCString());
+  fmt::print("track: {}\n", id3v1tag->track());
+  fmt::print("genre: {}\n", id3v1tag->genre().toCString());
+}
 
+void dumpId3V2(MPEG::File& f)
+{
+  ID3v2::Tag* id3v2tag = f.ID3v2Tag();
+  if (!id3v2tag) {
+    fmt::print("No ID3v2 tag...\n");
+    return;
+  }
+  ID3v2::Header* h = id3v2tag->header();
+  fmt::print("ID3v2.{}.{}, {} bytes in tag:\n", h->majorVersion(), h->revisionNumber(), h->tagSize());
+  for (const auto& it : id3v2tag->frameList()) {
+    fmt::print("{} - \"{}\"\n", (it->frameID(), it->toString().toCString()));
+  }
+}
+
+void dumpApe(MPEG::File& f)
+{
   APE::Tag* ape = f.APETag();
-
-  cout << endl << "APE" << endl;
-
-  if (ape) {
-    for (auto it = ape->itemListMap().begin(); it != ape->itemListMap().end();
-         ++it) {
-      if ((*it).second.type() != APE::Item::Binary)
-        cout << (*it).first << " - \"" << (*it).second.toString() << "\""
-             << endl;
-      else
-        cout << (*it).first << " - Binary data ("
-             << (*it).second.binaryData().size() << " bytes)" << endl;
-    }
+  if (!ape) {
+    fmt::print("No APE tag...\n");
+    return;
   }
-  else
-    cout << "file does not have a valid APE tag" << endl;
-
-  cout << endl;
+  fmt::print("APE:\n");
+  for (const auto& it : ape->itemListMap()) {
+    if (it.second.type() != APE::Item::Binary)
+      cout << it.first << " - \"" << it.second.toString() << "\"" << endl;
+    else
+      cout << it.first << " - Binary data (" << it.second.binaryData().size() << " bytes)" << endl;
+  }
 }
 
 // TXXX - "[RD-RATING] RD-RATING 3"
@@ -95,12 +95,9 @@ int getMyRating(const string& path)
   auto it = id3v2tag->frameList().begin();
   for (; it != id3v2tag->frameList().end(); it++) {
     if ((*it)->frameID() == "TXXX") {
-      if (
-        ((ID3v2::UserTextIdentificationFrame*)(*it))->description()
-        == "RD-RATING") {
-        const auto& fl =
-          ((ID3v2::UserTextIdentificationFrame*)(*it))->fieldList();
-        return atoi(fl[1].toCString());
+      if (((ID3v2::UserTextIdentificationFrame*)(*it))->description() == "RD-RATING") {
+        const auto& fl = ((ID3v2::UserTextIdentificationFrame*)(*it))->fieldList();
+        return fl[1].toInt();
       }
     }
   }
@@ -112,31 +109,26 @@ int getMyRating(const string& path)
 void setMyRating(const string& path, int rating)
 {
   MPEG::File f(path.c_str());
-  ID3v2::Tag* id3v2tag = f.ID3v2Tag();
+  ID3v2::Tag* id3v2tag = f.ID3v2Tag(true);
 
-  if (!id3v2tag) {
-    fmt::print("NO ID3V2TAG\n");
-    return;
-  }
+  // if (!id3v2tag) {
+  //   fmt::print("NO ID3V2TAG\n");
+  //   return;
+  // }
 
-  createOrUpdateUserTextField(
-    f, id3v2tag, "TXXX", "RD-RATING", fmt::format("{}", rating));
-  createOrUpdateUserTextField(
-    f, id3v2tag, "TXXX", "FMPS_Rating", fmt::format("{:.1f}", rating / 5.0));
+  createOrUpdateUserTextField(f, id3v2tag, "TXXX", "RD-RATING", fmt::format("{}", rating));
+  createOrUpdateUserTextField(f, id3v2tag, "TXXX", "FMPS_Rating", fmt::format("{:.1f}", rating / 5.0));
   createOrUpdatePopularityMeter(f, id3v2tag, rating);
 }
 
 void createOrUpdateUserTextField(
-  MPEG::File& f, ID3v2::Tag* id3v2tag, const string& frameIdStr,
-  const string& descriptionStr, const string& ratingStr)
+  MPEG::File& f, ID3v2::Tag* id3v2tag, const string& frameIdStr, const string& descriptionStr, const string& ratingStr)
 {
   bool foundFrame = false;
   auto it = id3v2tag->frameList().begin();
   for (; it != id3v2tag->frameList().end(); it++) {
     if ((*it)->frameID() == frameIdStr.c_str()) {
-      if (
-        ((ID3v2::UserTextIdentificationFrame*)(*it))->description()
-        == descriptionStr) {
+      if (((ID3v2::UserTextIdentificationFrame*)(*it))->description() == descriptionStr) {
         foundFrame = true;
         (*it)->setText(ratingStr);
         break;
@@ -149,12 +141,10 @@ void createOrUpdateUserTextField(
     frame->setText(ratingStr);
     id3v2tag->addFrame(frame);
   }
-
   f.save();
 }
 
-void createOrUpdatePopularityMeter(
-  MPEG::File& f, ID3v2::Tag* id3v2tag, int ratingInt)
+void createOrUpdatePopularityMeter(MPEG::File& f, ID3v2::Tag* id3v2tag, int ratingInt)
 {
   ratingInt *= 51;
   bool foundFrame = false;
@@ -187,8 +177,7 @@ void syncMyRatingToPopularityMeter(const std::string& path)
   MPEG::File f(path.c_str());
   ID3v2::Tag* id3v2tag = f.ID3v2Tag();
 
-  createOrUpdateUserTextField(
-    f, id3v2tag, "TXXX", "FMPS_Rating", fmt::format("{:.1f}", myRating / 5.0));
+  createOrUpdateUserTextField(f, id3v2tag, "TXXX", "FMPS_Rating", fmt::format("{:.1f}", myRating / 5.0));
   createOrUpdatePopularityMeter(f, id3v2tag, myRating);
 }
 

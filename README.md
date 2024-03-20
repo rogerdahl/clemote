@@ -8,11 +8,10 @@ Any device that shows up as an input device in Linux is supported. This includes
 
 The app controls Clementine via D-Bus. File and tag operations are performed directly, after which the Clementine library is synchronized in order to make the changes visible in the tracklists.
 
-
 ### Usage
 
-* Start the Clementine Player
-* Start this app with:
+- Start the Clementine Player
+- Start this app with:
 
 ```shell
 $ clemote remote </dev/input/eventX>
@@ -50,7 +49,6 @@ Look for a device such as
 
 You now have the device (`/dev/input/event15` in this case).
 
-
 ### Creating a persistent device and allow use by regular user
 
 The device number may change when you plug or unplug devices, or reboot the computer. It may also be usable only by root. To fix these issues, add a udev file:
@@ -77,12 +75,11 @@ $ clemote remote /dev/remote_control
 
 ### Setup
 
-* Allow the app to trigger refresh in Clementine to show changes:
+- Allow the app to trigger refresh in Clementine to show changes:
 
 
     Clementine > Tools > Preferences > Music Library
         > Monitor library for changes > Enable
-
 
 ### Build on Linux
 
@@ -91,7 +88,7 @@ Tested on Linux Mint 20. Should also work on Ubuntu and other distributions base
 Packaged dependencies:
 
 ```shell
-$ sudo apt install \ 
+$ sudo apt install \
 build-essential ninja-build cmake clang-format \
 libboost-filesystem-dev libboost-system-dev \
 libsystemd-dev libpulse-dev libevdev-dev \
@@ -113,7 +110,7 @@ Get the source and build:
 
 ```shell
 $ bash -c '
-  git clone git@github.com:rogerdahl/clemote.git 
+  git clone git@github.com:rogerdahl/clemote.git
   cd clemote
   mkdir -p build && cd build
   cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ..
@@ -123,25 +120,25 @@ $ bash -c '
 
 ### Troubleshooting
 
-* This app does not need LIRC, and LIRC may interfere if installed. Try:
+- This app does not need LIRC, and LIRC may interfere if installed. Try:
 
 ```shell
 $ sudo apt remove lirc
 ```
 
-* Use `d-feet` to troubleshoot D-Bus issues:
+- Use `d-feet` to troubleshoot D-Bus issues:
 
 ```shell
 $ sudo apt install d-feet
 $ d-feet
 ```
 
-* Missing library, e.g.,
+- Missing library, e.g.,
 
 ```
-./clemote: error while loading shared libraries: 
+./clemote: error while loading shared libraries:
   libsdbus-c++.so.0: cannot open shared object file: No such file or directory
-```  
+```
 
 Update the library cache:
 
@@ -149,7 +146,7 @@ Update the library cache:
 $ sudo ldconfig
 ```
 
-* Input devices that register as multiple devices
+- Input devices that register as multiple devices
 
 Some input devices register multiple devices. E.g., this remote control, which has a built-in keyboard and air mouse.
 
@@ -197,11 +194,11 @@ Some input devices register multiple devices. E.g., this remote control, which h
    bits ev : (null) (null) (null)
 ```
 
-Currently, Clemote can handle input from only one device. If the desired buttons are spread across two or more devices, you will need to select the device that has the most usable buttons.
+Currently, Clemote can handle input from only one device. If the desired buttons are spread across two or more devices, you can start multiple versions of Clemote, and pointing each to a separate device.
 
 To find the device to use in clemote, use the `lsinput` and `input-events` commands.
 
 ### Technologies
 
-* sdbus-cpp - High level D-Bus C++ bindings
-* taglib - Battle tested audio metadata library
+- sdbus-cpp - High level D-Bus C++ bindings
+- taglib - Battle tested audio metadata library

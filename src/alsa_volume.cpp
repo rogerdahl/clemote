@@ -2,23 +2,15 @@
 #include "alsa_volume.h"
 #include <alsa/asoundlib.h>
 
-void adjust_volume_channel(
-  int adj_vol, snd_mixer_selem_channel_id_t channel_id,
-  const char* channel_name);
+void adjust_volume_channel(int adj_vol, snd_mixer_selem_channel_id_t channel_id, const char* channel_name);
 
 void adjust_volume(int adj_vol)
 {
-  adjust_volume_channel(
-    adj_vol, snd_mixer_selem_channel_id_t::SND_MIXER_SCHN_FRONT_RIGHT,
-    "Front Right");
-  adjust_volume_channel(
-    adj_vol, snd_mixer_selem_channel_id_t::SND_MIXER_SCHN_FRONT_LEFT,
-    "Front Left");
+  adjust_volume_channel(adj_vol, snd_mixer_selem_channel_id_t::SND_MIXER_SCHN_FRONT_RIGHT, "Front Right");
+  adjust_volume_channel(adj_vol, snd_mixer_selem_channel_id_t::SND_MIXER_SCHN_FRONT_LEFT, "Front Left");
 }
 
-void adjust_volume_channel(
-  int adj_vol, snd_mixer_selem_channel_id_t channel_id,
-  const char* channel_name)
+void adjust_volume_channel(int adj_vol, snd_mixer_selem_channel_id_t channel_id, const char* channel_name)
 {
   snd_mixer_t* handlev;
   snd_mixer_selem_id_t* sid = {};
@@ -52,7 +44,6 @@ void adjust_volume_channel(
 
   fmt::print("Volume @ {}: {} -> {}\n", channel_name, old_vol, new_vol);
 
-  snd_mixer_selem_set_playback_volume(
-    elem, channel_id, old_vol * max_vol / 100 + min_vol);
+  snd_mixer_selem_set_playback_volume(elem, channel_id, old_vol * max_vol / 100 + min_vol);
   snd_mixer_close(handlev);
 }
