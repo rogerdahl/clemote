@@ -30,21 +30,23 @@ The blue button adds ".delete" to the filename of the currently playing file but
 ### Finding your remote control receiver device
 
 ```shell
-$ sudo apt install input-utils
-$ sudo lsinput
+$ cat /proc/bus/input/devices
 ```
 
 Look for a device such as
 
 ```shell
-/dev/input/event15
-   bustype : BUS_USB
-   vendor  : 0x1019
-   product : 0xf38
-   version : 0
-   name    : "Media Center Ed. eHome Infrared "
-   phys    : "usb-0000:29:00.3-3"
-   bits ev : (null) (null) (null) (null)
+I: Bus=0003 Vendor=1019 Product=0f38 Version=0000
+N: Name="Media Center Ed. eHome Infrared Remote Transceiver (1019:0f38)"
+P: Phys=usb-0000:29:00.3-4
+S: Sysfs=/devices/pci0000:00/0000:00:07.1/0000:29:00.3/usb5/5-4/5-4:1.0/rc/rc0/input36
+U: Uniq=
+H: Handlers=kbd event19 
+B: PROP=20
+B: EV=100017
+B: KEY=fff 0 4200108fc32e 237605100000000 0 700158000 419200004001 8e968000000000 10000000
+B: REL=3
+B: MSC=10
 ```
 
 You now have the device (`/dev/input/event15` in this case).
