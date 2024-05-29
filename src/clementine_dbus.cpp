@@ -10,22 +10,16 @@
 #include "tag.h"
 
 using namespace std;
-// using namespace boost::filesystem;
 using namespace boost::algorithm;
 
-// Ubuntu 16.04
+auto CLEMENTINE_SERVICE_NAME = sdbus::ServiceName("org.mpris.MediaPlayer2.clementine");
+auto PLAYER_OBJECT_PATH =          sdbus::ObjectPath("/org/mpris/MediaPlayer2");
+auto MEDIA_PLAYER_INTERFACE_NAME = sdbus::InterfaceName("org.mpris.MediaPlayer2.Player");
+auto TRACK_LIST_INTERFACE_NAME =   sdbus::InterfaceName("org.mpris.MediaPlayer2.TrackList");
 
-// const char* CLEMENTINE_SERVICE_NAME = "org.mpris.clementine";
-// const char* PLAYER_OBJECT_PATH = "/Player";
-// const char* TRACK_LIST_OBJECT_PATH = "/TrackList";
-// const char* MEDIA_PLAYER_INTERFACE_NAME = "org.freedesktop.MediaPlayer";
+auto DBUS_SERVICE_NAME = sdbus::ServiceName("org.freedesktop.DBus");
+auto DBUS_OBJECT_PATH = sdbus::ObjectPath("/");
 
-// Ubuntu 18.04
-
-const char* CLEMENTINE_SERVICE_NAME = "org.mpris.MediaPlayer2.clementine";
-const char* PLAYER_OBJECT_PATH = "/org/mpris/MediaPlayer2";
-const char* MEDIA_PLAYER_INTERFACE_NAME = "org.mpris.MediaPlayer2.Player";
-const char* TRACK_LIST_INTERFACE_NAME = "org.mpris.MediaPlayer2.TrackList";
 
 std::string decodeUrl(const std::string& url);
 
@@ -150,7 +144,7 @@ string ClementineDbus::getPlayerCurrentPath()
 
 MetadataMap ClementineDbus::getMetadataMap() const
 {
-  MetadataMap metadataMap = playerProxy->getProperty("Metadata").onInterface(MEDIA_PLAYER_INTERFACE_NAME);
+  auto metadataMap = playerProxy->getProperty("Metadata").onInterface(MEDIA_PLAYER_INTERFACE_NAME).get<MetadataMap>();
   return metadataMap;
 }
 
@@ -246,7 +240,7 @@ void threadFunction()
   // interface=org.freedesktop.DBus.Properties; member=PropertiesChanged
   //   string "org.mpris.MediaPlayer2.Player"
 
-  auto propProxy = sdbus::createProxy(*connection, "org.freedesktop.DBus", "org.freedesktop.DBus");
+  auto propProxy = sdbus::createProxy(*connection, DBUS_SERVICE_NAME, DBUS_OBJECT_PATH);
 
   //  playerProxy->uponSignal("PropertiesChanged").onInterface("org.freedesktop.DBus.Properties")
   //    .call([](sdbus::Signal& v) { onTrackMetadataChanged(v); });
@@ -255,7 +249,7 @@ void threadFunction()
     onTrackMetadataChanged(v);
   });
 
-  playerProxy->finishRegistration();
+  // playerProxy->finishRegistration();
   connection->enterEventLoop();
 }
 
