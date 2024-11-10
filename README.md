@@ -49,7 +49,7 @@ B: REL=3
 B: MSC=10
 ```
 
-You now have the device (`/dev/input/event15` in this case).
+The `Handlers` section shows the event, which is event19, so the input device is `/dev/input/event19` in this case.
 
 ### Creating a persistent device and allow use by regular user
 
@@ -85,9 +85,14 @@ $ clemote remote /dev/remote_control
 
 ### Build on Linux
 
-Tested on Linux Mint 20. Should also work on Ubuntu and other distributions based on Debian.
+Tested on:
 
-Packaged dependencies:
+- Linux Mint 20. Should also work on Ubuntu and other distributions based on Debian
+- Fedora 40
+
+- Packaged dependencies:
+
+DEB:
 
 ```shell
 $ sudo apt install \
@@ -95,6 +100,14 @@ build-essential ninja-build cmake clang-format \
 libboost-filesystem-dev libboost-system-dev \
 libsystemd-dev libpulse-dev libevdev-dev \
 libtag1-dev libfmt-dev libasound-dev
+```
+
+RPM:
+
+```shell
+$ sudo dnf install \
+cmake boost-devel systemd-devel pulseaudio-libs-devel \
+libevdev-devel taglib-devel fmt-devel alsa-lib-devel
 ```
 
 sdbus-cpp:
