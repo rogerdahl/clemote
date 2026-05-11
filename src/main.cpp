@@ -83,7 +83,8 @@ int remoteControl(const string& device)
     }
 
 
-    switch (ev.code) {
+    try {
+      switch (ev.code) {
 
       //
       // Direct to player mappings
@@ -249,8 +250,16 @@ int remoteControl(const string& device)
     }
 
     default:
-      fmt::print("Unhandled: code={}(0x{:x}) symbol={}\n", ev.code, ev.code, eventCodeToString(ev.code));
-      break;
+        fmt::print("Unhandled: code={}(0x{:x}) symbol={}\n", ev.code, ev.code, eventCodeToString(ev.code));
+        break;
+      }
+    } catch (const sdbus::Error& e) {
+      fmt::print("D-Bus error: {}. Reconnecting...\n", e.what());
+      try {
+        clem = ClementineDbus();
+      } catch (const sdbus::Error& e2) {
+        fmt::print("Reconnect failed: {}\n", e2.what());
+      }
     }
   }
 

@@ -16,6 +16,8 @@ class ClementineDbus
   public:
   ClementineDbus();
   ~ClementineDbus();
+  ClementineDbus(ClementineDbus&&) = default;
+  ClementineDbus& operator=(ClementineDbus&&) = default;
   // Player
   void playerPlay();
   void playerStop();

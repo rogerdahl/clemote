@@ -153,6 +153,7 @@ void ClementineDbus::removeTrackFromPlaylist(const string& trackId)
 }
 
 #include <thread>
+#include <chrono>
 
 void onSeeked3(int64_t v);
 void threadFunction();
@@ -168,20 +169,31 @@ void onTrackMetadataChanged([[maybe_unused]] sdbus::Variant& m)
 
 void threadFunction()
 {
-  fmt::print("threadFunction()\n");
+  while (true) {
+    try {
+      fmt::print("Signal thread: connecting...\n");
+      auto connection = sdbus::createSessionBusConnection();
+      auto playerProxy = sdbus::createProxy(
+          *connection,
+          sdbus::ServiceName{CLEMENTINE_SERVICE_NAME},
+          sdbus::ObjectPath{PLAYER_OBJECT_PATH}
+      );
 
-  auto connection = sdbus::createSessionBusConnection();
-  auto playerProxy = sdbus::createProxy(*connection, sdbus::ServiceName{CLEMENTINE_SERVICE_NAME}, sdbus::ObjectPath{PLAYER_OBJECT_PATH});
+      playerProxy->uponSignal("Seeked").onInterface(MEDIA_PLAYER_INTERFACE_NAME).call([](const int64_t v) {
+        onSeeked3(v);
+      });
 
-  playerProxy->uponSignal("Seeked").onInterface(MEDIA_PLAYER_INTERFACE_NAME).call([](const int64_t v) {
-    onSeeked3(v);
-  });
+      playerProxy->uponSignal("PropertiesChanged").onInterface("org.freedesktop.DBus.Properties").call([](sdbus::Variant v) {
+        onTrackMetadataChanged(v);
+      });
 
-  playerProxy->uponSignal("PropertiesChanged").onInterface("org.freedesktop.DBus.Properties").call([](sdbus::Variant v) {
-    onTrackMetadataChanged(v);
-  });
-
-  connection->enterEventLoop();
+      connection->enterEventLoop();
+      fmt::print("Signal thread: event loop exited, reconnecting...\n");
+    } catch (const sdbus::Error& e) {
+      fmt::print("Signal thread error: {}\n", e.what());
+    }
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+  }
 }
 
 void onSeeked3(const int64_t v)
