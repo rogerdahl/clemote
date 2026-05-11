@@ -1,9 +1,11 @@
 #include <string>
 #include <sstream>
+#include <vector>
 
 #include "clementine_dbus.h"
 
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 
 #include "tag.h"
 
@@ -59,20 +61,25 @@ void ClementineDbus::playerPrev()
   playerProxy->callMethod("Previous").onInterface(MEDIA_PLAYER_INTERFACE_NAME);
 }
 
+static string variantToString(sdbus::Variant& value)
+{
+  const string type = value.peekValueType();
+  if (type == "i") return fmt::format("{}", value.get<int32_t>());
+  if (type == "x") return fmt::format("{}", value.get<int64_t>());
+  if (type == "d") return fmt::format("{}", value.get<double>());
+  if (type == "s") return value.get<string>();
+  if (type == "as") { auto v = value.get<vector<string>>(); return fmt::format("[{}]", fmt::join(v, ", ")); }
+  return fmt::format("<{}>", type);
+}
+
 void ClementineDbus::playerNext()
 {
   fmt::print("Next\n");
 
   auto m = getMetadataMap();
 
-  for (auto& v : m) {
-    fmt::print("{} - {}\n", v.first, v.second.peekValueType());
-    if (v.second.peekValueType() == "i") {
-      fmt::print("{} - {}\n", v.first, v.second.get<int>());
-    }
-    else if (v.second.peekValueType() == "s") {
-      fmt::print("{} - {}\n", v.first, v.second.get<string>());
-    }
+  for (auto& [key, value] : m) {
+    fmt::print("{} - {}\n", key, variantToString(value));
   }
 
   playerProxy->callMethod("Next").onInterface(MEDIA_PLAYER_INTERFACE_NAME);
