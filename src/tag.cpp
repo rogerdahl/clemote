@@ -111,10 +111,6 @@ void setMyRating(const string& path, int rating)
   MPEG::File f(path.c_str());
   ID3v2::Tag* id3v2tag = f.ID3v2Tag(true);
 
-  // if (!id3v2tag) {
-  //   fmt::print("NO ID3V2TAG\n");
-  //   return;
-  // }
 
   createOrUpdateUserTextField(f, id3v2tag, "TXXX", "RD-RATING", fmt::format("{}", rating));
   createOrUpdateUserTextField(f, id3v2tag, "TXXX", "FMPS_Rating", fmt::format("{:.1f}", rating / 5.0));

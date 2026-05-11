@@ -23,9 +23,7 @@ You may have to run the app as root and the device number may change when you pl
 
 If you need instructions for how to run the app automatically as a service, feel free to add a ticket.
 
-**Warning: The RECORD button immediately deletes the currently playing file from disk.**
-
-The blue button adds ".delete" to the filename of the currently playing file but does not delete the file.
+The blue button renames the currently playing file by adding `.delete` to the filename (does not delete the file).
 
 ### Finding your remote control receiver device
 
@@ -49,7 +47,7 @@ B: REL=3
 B: MSC=10
 ```
 
-You now have the device (`/dev/input/event15` in this case).
+The `Handlers` section shows the event, which is event19, so the input device is `/dev/input/event19` in this case.
 
 ### Creating a persistent device and allow use by regular user
 
@@ -85,28 +83,27 @@ $ clemote remote /dev/remote_control
 
 ### Build on Linux
 
-Tested on Linux Mint 20. Should also work on Ubuntu and other distributions based on Debian.
+Tested on:
 
-Packaged dependencies:
+- Linux Mint 20. Should also work on Ubuntu and other distributions based on Debian
+- Fedora 40
+
+- Packaged dependencies:
+
+DEB:
 
 ```shell
 $ sudo apt install \
 build-essential ninja-build cmake clang-format \
-libboost-filesystem-dev libboost-system-dev \
-libsystemd-dev libpulse-dev libevdev-dev \
-libtag1-dev libfmt-dev libasound-dev
+libsdbus-c++-dev libtag1-dev libfmt-dev libasound-dev
 ```
 
-sdbus-cpp:
+RPM:
 
 ```shell
-$ cd clemote
-$ mkdir -p libraries
-$ git clone https://github.com/Kistler-Group/sdbus-cpp.git libraries/sdbus-cpp
-$ cd libraries/sdbus-cpp
+$ sudo dnf install \
+cmake sdbus-cpp-devel taglib-devel fmt-devel alsa-lib-devel
 ```
-
-- Follow the instructions in `INSTALL`.
 
 Get the source and build:
 

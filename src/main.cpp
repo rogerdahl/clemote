@@ -3,34 +3,28 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
-
-#include <boost/filesystem.hpp>
-#include <boost/algorithm/string/replace.hpp>
+#include <filesystem>
 
 #include "clementine_dbus.h"
 #include "tag.h"
 #include "alsa_volume.h"
 #include "event_code_to_str.h"
 
-// Couldn't find example for changing volume.
-//#include <soundio/soundio.h>
-
 using namespace std;
-using namespace boost::filesystem;
-using namespace boost::algorithm;
+namespace fs = std::filesystem;
 
 int remoteControl(const string& device);
 
-void touchParentDir(const path& filePath);
+void touchParentDir(const fs::path& filePath);
 void touchCurrentParentDir(ClementineDbus& clem);
 void setRatingOnCurrent(ClementineDbus& clem, int ratingInt, bool skipToNext);
-void syncMyRatingToPopularityMeterRecursive(const path& rootDir);
+void syncMyRatingToPopularityMeterRecursive(const fs::path& rootDir);
 
 const int VOLUME_ADJ_STEP = 5;
 
 int main(int argc, char** argv)
 {
-  auto progName = path(argv[0]).filename().string();
+  auto progName = fs::path(argv[0]).filename().string();
 
   if (argc != 3) {
     fmt::print("Usage: {} remote </dev/input/eventX>\n", progName);
@@ -88,9 +82,6 @@ int remoteControl(const string& device)
       continue;
     }
 
-    //    fmt::print("code={}({}) value={}\n",
-    //               eventCodeToString(ev.code), ev.code, ev.value
-    //    );
 
     switch (ev.code) {
 
@@ -119,8 +110,6 @@ int remoteControl(const string& device)
     case KEY_UP:
     case KEY_PREVIOUS:
     case KEY_PREVIOUSSONG:
-      //    case KEY_SUBTITLE:
-      // case KEY_EXIT:
       clem.playerPrev();
       break;
     case KEY_DOWN:
@@ -134,7 +123,6 @@ int remoteControl(const string& device)
       // skip back 30 sec
       auto pos = clem.getPlayerPosition();
       string trackId = clem.getCurrentTrackId();
-      //      fmt::print("trackId: {}\n", trackId);
       auto newPos = pos - 30 * 1000;
       clem.setPlayerPosition(trackId, newPos);
       pos /= 1000;
@@ -167,6 +155,7 @@ int remoteControl(const string& device)
     case KEY_PVR: {
       clem.removeCurrentTrackFromPlaylist();
       touchCurrentParentDir(clem);
+      break;
     }
       //
       // Tag and keep playing, score 1 - 5
@@ -247,26 +236,15 @@ int remoteControl(const string& device)
       // File operations
       //
 
-      // case KEY_RECORD: {
-      //   // Delete immediately, with extreme prejudice
-      //   string path = clem.getPlayerCurrentPath();
-      //   fmt::print("Deleting file:\n{}\n", path);
-      //   string trackId = clem.getCurrentTrackId();
-      //   clem.playerNext();
-      //   remove(path);
-      //   clem.removeTrackFromPlaylist(trackId);
-      //   break;
-      // }
-
     case KEY_BLUE: {
       // Tag for delete by renaming file
       string path = clem.getPlayerCurrentPath();
       auto newPath = path;
-      replace_all(newPath, ".mp3", ".delete.mp3");
-      // TODO: Replace with regex
+      for (size_t pos = 0; (pos = newPath.find(".mp3", pos)) != string::npos; pos += 11)
+        newPath.replace(pos, 4, ".delete.mp3");
       fmt::print("Renaming file:\n{} ->\n{}\n", path, newPath);
       clem.playerNext();
-      rename(path, newPath);
+      rename(path.c_str(), newPath.c_str());
       break;
     }
 
@@ -282,10 +260,10 @@ int remoteControl(const string& device)
 #pragma clang diagnostic pop
 
 // Initial scan to make ratings from old library visible in Clementine
-void syncMyRatingToPopularityMeterRecursive(const path& rootDir)
+void syncMyRatingToPopularityMeterRecursive(const fs::path& rootDir)
 {
-  for (recursive_directory_iterator iter(rootDir), end; iter != end; ++iter) {
-    syncMyRatingToPopularityMeter(iter->path().string());
+  for (const auto& entry : fs::recursive_directory_iterator(rootDir)) {
+    syncMyRatingToPopularityMeter(entry.path().string());
   }
 }
 
@@ -309,7 +287,7 @@ void touchCurrentParentDir(ClementineDbus& clem)
   touchParentDir(filePath);
 }
 
-void touchParentDir(const path& filePath)
+void touchParentDir(const fs::path& filePath)
 {
   int f = open(filePath.parent_path().c_str(), O_NOCTTY | O_NONBLOCK, 0666);
   if (f >= 0) {

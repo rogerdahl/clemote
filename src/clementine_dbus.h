@@ -11,10 +11,6 @@ typedef std::unique_ptr<sdbus::IConnection> IConnectionPtr;
 
 typedef std::map<std::string, sdbus::Variant> MetadataMap;
 
-// void onSeeked(const int64_t v);
-void onSeeked(sdbus::Signal& signal);
-// void onTrackMetadataChanged(sdbus::Signal& signal);
-
 class ClementineDbus
 {
   public:
@@ -39,30 +35,13 @@ class ClementineDbus
   std::string getCurrentTrackId();
   void removeCurrentTrackFromPlaylist();
   void removeTrackFromPlaylist(const std::string& trackId);
-  //
+
   private:
   void createPlayerProxy();
 
-  void dump();
-
-  //  void registerSeekedHandler();
-  //  void registerTrackMedatadataChangedHandler();
-
   IProxyPtr playerProxy;
-  IProxyPtr trackListProxy;
   IConnectionPtr connection;
   MetadataMap getMetadataMap() const;
 };
-
-// class ClemListen
-//{
-// public:
-//  ClemListen();
-//  ~ClemListen();
-//  void registerSeekedHandler();
-//  IConnectionPtr connection;
-//};
-//
-//
 
 void launchThread();

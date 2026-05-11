@@ -1,9 +1,11 @@
-#include <map>
 #include <string>
+#include <unordered_map>
+
+#include <fmt/format.h>
 
 #include "event_code_to_str.h"
 
-std::map<int, std::string> code_to_str_map = {
+const std::unordered_map<int, std::string> code_to_str_map = {
   { 0, "KEY_RESERVED" },
   { 1, "KEY_ESC" },
   { 2, "KEY_1" },
@@ -571,5 +573,9 @@ std::map<int, std::string> code_to_str_map = {
 
 std::string eventCodeToString(int eventCode)
 {
-  return code_to_str_map[eventCode];
+  auto it = code_to_str_map.find(eventCode);
+  if (it != code_to_str_map.end()) {
+    return it->second;
+  }
+  return fmt::format("UNKNOWN(0x{:x})", eventCode);
 }

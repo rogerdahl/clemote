@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <fmt/format.h>
 #include "alsa_volume.h"
 #include <alsa/asoundlib.h>
@@ -33,17 +34,10 @@ void adjust_volume_channel(int adj_vol, snd_mixer_selem_channel_id_t channel_id,
   long old_vol;
   snd_mixer_selem_get_playback_volume(elem, channel_id, &old_vol);
   old_vol = old_vol * 100 / max_vol + min_vol;
-  auto new_vol = old_vol += adj_vol;
-
-  if (new_vol < min_vol) {
-    new_vol = min_vol;
-  }
-  if (new_vol > max_vol) {
-    new_vol = max_vol;
-  }
+  auto new_vol = std::clamp(old_vol + adj_vol, min_vol, max_vol);
 
   fmt::print("Volume @ {}: {} -> {}\n", channel_name, old_vol, new_vol);
 
-  snd_mixer_selem_set_playback_volume(elem, channel_id, old_vol * max_vol / 100 + min_vol);
+  snd_mixer_selem_set_playback_volume(elem, channel_id, new_vol * max_vol / 100 + min_vol);
   snd_mixer_close(handlev);
 }
