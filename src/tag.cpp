@@ -61,7 +61,8 @@ void dumpId3V2(MPEG::File& f)
   ID3v2::Header* h = id3v2tag->header();
   fmt::print("ID3v2.{}.{}, {} bytes in tag:\n", h->majorVersion(), h->revisionNumber(), h->tagSize());
   for (const auto& it : id3v2tag->frameList()) {
-    fmt::print("{} - \"{}\"\n", (it->frameID(), it->toString().toCString()));
+    const auto& fid = it->frameID();
+    fmt::print("{} - \"{}\"\n", std::string(fid.data(), fid.size()), it->toString().toCString());
   }
 }
 

@@ -1,6 +1,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <functional>
 
 #include "clementine_dbus.h"
 
@@ -165,13 +166,43 @@ void ClementineDbus::removeTrackFromPlaylist(const string& trackId)
 void onSeeked3(int64_t v);
 void threadFunction();
 
+static std::function<void(const MetadataMap&)> g_onTrackChanged;
+
+void ClementineDbus::setOnTrackChanged(std::function<void(const MetadataMap&)> cb)
+{
+  g_onTrackChanged = std::move(cb);
+}
+
+void ClementineDbus::dumpTagsOnTrackChange()
+{
+  setOnTrackChanged([](const MetadataMap& metadata) {
+    try {
+      auto urlIt = metadata.find("xesam:url");
+      if (urlIt == metadata.end()) {
+        fmt::print("dumpTagsOnTrackChange: no xesam:url in metadata\n");
+        return;
+      }
+      auto path = urlIt->second.get<std::string>();
+      if (auto pos = path.find("file://"); pos != std::string::npos)
+        path.erase(pos, 7);
+      path = decodeUrl(path);
+      fmt::print("--- Tags for: {} ---\n", path);
+      dump(path);
+    } catch (const std::exception& e) {
+      fmt::print("dumpTagsOnTrackChange error: {}\n", e.what());
+    }
+  });
+}
+
 void launchThread()
 {
   std::thread(&threadFunction).detach();
 }
 
-void onTrackMetadataChanged([[maybe_unused]] sdbus::Variant& m)
+void onTrackMetadataChanged(const MetadataMap& metadata)
 {
+  if (g_onTrackChanged)
+    g_onTrackChanged(metadata);
 }
 
 void threadFunction()
@@ -190,9 +221,27 @@ void threadFunction()
         onSeeked3(v);
       });
 
-      playerProxy->uponSignal("PropertiesChanged").onInterface("org.freedesktop.DBus.Properties").call([](sdbus::Variant v) {
-        onTrackMetadataChanged(v);
-      });
+      static std::string lastTrackId;
+
+      playerProxy->uponSignal("PropertiesChanged")
+        .onInterface("org.freedesktop.DBus.Properties")
+        .call([](const std::string& /*interfaceName*/,
+                 std::map<std::string, sdbus::Variant> changedProperties,
+                 const std::vector<std::string>& /*invalidated*/) {
+          auto it = changedProperties.find("Metadata");
+          if (it == changedProperties.end())
+            return;
+          auto metadata = it->second.get<MetadataMap>();
+          auto tidIt = metadata.find("mpris:trackid");
+          if (tidIt == metadata.end())
+            return;
+          std::string newTrackId = tidIt->second.get<std::string>();
+          if (newTrackId == lastTrackId)
+            return;
+          lastTrackId = newTrackId;
+          fmt::print("Track changed: {}\n", newTrackId);
+          onTrackMetadataChanged(metadata);
+        });
 
       connection->enterEventLoop();
       fmt::print("Signal thread: event loop exited, reconnecting...\n");

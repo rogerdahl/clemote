@@ -3,6 +3,7 @@
 #include <sdbus-c++/sdbus-c++.h>
 #include <string>
 #include <map>
+#include <functional>
 
 #include "int_types.h"
 
@@ -37,6 +38,9 @@ class ClementineDbus
   std::string getCurrentTrackId();
   void removeCurrentTrackFromPlaylist();
   void removeTrackFromPlaylist(const std::string& trackId);
+
+  void setOnTrackChanged(std::function<void(const MetadataMap&)> cb);
+  void dumpTagsOnTrackChange();
 
   private:
   void createPlayerProxy();

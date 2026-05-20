@@ -4,6 +4,10 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <filesystem>
+#include <cerrno>
+#include <cstring>
+#include <thread>
+#include <chrono>
 
 #include "clementine_dbus.h"
 #include "tag.h"
@@ -50,34 +54,43 @@ int main(int argc, char** argv)
 #pragma ide diagnostic ignored "EndlessLoop"
 int remoteControl(const string& device)
 {
-  int fevdev = open(device.c_str(), O_RDONLY);
-
-  char name[256] = "Unknown";
-  ioctl(fevdev, EVIOCGNAME(sizeof(name)), name);
-  fmt::print("Reading From: {} ({})\n", name, device);
-
-  int result = ioctl(fevdev, EVIOCGRAB, 1);
-  if (result) {
-    fmt::print("Error: Unable to get exclusive access to device. error={}\n", result);
-    return result;
-  }
-
   ClementineDbus clem;
-
+  clem.dumpTagsOnTrackChange();
   launchThread();
 
   while (true) {
-    struct input_event ev = {};
-    auto size = read(fevdev, &ev, sizeof(struct input_event));
+    int fevdev = open(device.c_str(), O_RDONLY);
+    if (fevdev == -1) {
+      fmt::print("Failed to open device {}: {} - retrying in 1s...\n", device, strerror(errno));
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+      continue;
+    }
 
-    if (size == -1) {
-      fmt::print("event read() failed\n");
-      continue;
+    char name[256] = "Unknown";
+    ioctl(fevdev, EVIOCGNAME(sizeof(name)), name);
+    fmt::print("Reading From: {} ({})\n", name, device);
+
+    int result = ioctl(fevdev, EVIOCGRAB, 1);
+    if (result) {
+      fmt::print("Error: Unable to get exclusive access to device. error={}\n", result);
+      close(fevdev);
+      return result;
     }
-    if (size == 0) {
-      fmt::print("event read() returned EOF\n");
-      continue;
-    }
+
+    while (true) {
+      struct input_event ev = {};
+      auto size = read(fevdev, &ev, sizeof(struct input_event));
+
+      if (size == -1) {
+        if (errno == EINTR)
+          continue;
+        fmt::print("event read() failed: {} ({}) - reconnecting in 1s...\n", strerror(errno), errno);
+        break;
+      }
+      if (size == 0) {
+        fmt::print("event read() returned EOF - device disconnected, reconnecting in 1s...\n");
+        break;
+      }
     if (ev.type != 1 || ev.value != 1) {
       continue;
     }
@@ -257,13 +270,15 @@ int remoteControl(const string& device)
       fmt::print("D-Bus error: {}. Reconnecting...\n", e.what());
       try {
         clem = ClementineDbus();
-      } catch (const sdbus::Error& e2) {
-        fmt::print("Reconnect failed: {}\n", e2.what());
+      } catch (...) {
+        fmt::print("Reconnect failed\n");
       }
     }
-  }
+  }  // inner event loop
 
-  return 0;
+  close(fevdev);
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  }  // outer reconnect loop
 }
 
 #pragma clang diagnostic pop
